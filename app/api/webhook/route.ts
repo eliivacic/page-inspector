@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       await resend.emails.send({
 
         from:
-          "PageInspector <onboarding@resend.dev>",
+          "PageInspector <reports@page-inspector.com>",
 
 
         to:
