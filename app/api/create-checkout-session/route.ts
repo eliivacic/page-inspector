@@ -34,23 +34,9 @@ export async function POST(req: NextRequest) {
 
       metadata: {
         website: url,
-        auditId: auditId,
+        auditId,
       },
 
-      success_url: "https://page-inspector.com?success=true",
-      cancel_url: "https://page-inspector.com?canceled=true",
-    });
-
-    return NextResponse.json({
-      url: session.url,
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    return NextResponse.json(
-      { error: "Failed to create checkout session" },
-      { status: 500 }
-    );
-  }
-}
+      success_url:
+        "https://www.page-inspector.com/thank-you?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https
