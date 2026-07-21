@@ -37,8 +37,9 @@ export async function POST(req: NextRequest) {
         auditId,
       },
 
-      success_url: "https://page-inspector.com?success=true",
-      cancel_url: "https://page-inspector.com?canceled=true",
+      success_url:
+  "https://www.page-inspector.com/thank-you?session_id={CHECKOUT_SESSION_ID}",
+cancel_url: "https://www.page-inspector.com",
     });
 
     return NextResponse.json({
