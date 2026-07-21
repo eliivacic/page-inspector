@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
         auditId: auditId,
       },
 
-      success_url: "http://localhost:3000?success=true",
-      cancel_url: "http://localhost:3000?canceled=true",
+      success_url: "https://page-inspector.com?success=true",
+      cancel_url: "https://page-inspector.com?canceled=true",
     });
 
     return NextResponse.json({
