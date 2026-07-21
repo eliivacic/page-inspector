@@ -137,8 +137,16 @@ Rules:
     });
 
     console.log("OPENAI RESPONSE:", response.output_text);
-    const audit = JSON.parse(response.output_text);
-    console.log("NEW AUDIT:", audit);
+
+const cleanedOutput = response.output_text
+  .replace(/^```json\s*/i, "")
+  .replace(/^```\s*/i, "")
+  .replace(/\s*```$/i, "")
+  .trim();
+
+const audit = JSON.parse(cleanedOutput);
+
+console.log("NEW AUDIT:", audit);
 
     const { data, error } = await supabase
       .from("audits")
