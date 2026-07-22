@@ -14,85 +14,33 @@ type AuditResult = {
 };
 
 const categories = [
-  {
-    no: "01",
-    title: "User experience",
-    icon: "🧭",
-    chip: "bg-[#E7DBFA]",
-    desc: "How visitors actually move through your site — navigation, clarity, and friction points that make people leave.",
-  },
-  {
-    no: "02",
-    title: "SEO",
-    icon: "🔎",
-    chip: "bg-[#B9EBD3]",
-    desc: "Titles, headings and structure — what's keeping search engines from understanding your pages.",
-  },
-  {
-    no: "03",
-    title: "Performance",
-    icon: "⚡",
-    chip: "bg-[#FFE6CE]",
-    desc: "Load times and technical drag that cost you visitors before they even see the page.",
-  },
-  {
-    no: "04",
-    title: "Accessibility",
-    icon: "♿",
-    chip: "bg-[#FFF1BE]",
-    desc: "Contrast, labels and structure — so the site works for every visitor, not just the ones it was tested on.",
-  },
-  {
-    no: "05",
-    title: "Copywriting",
-    icon: "✍️",
-    chip: "bg-[#FFDAD1]",
-    desc: "Whether your headlines actually say what your product does, and why anyone should care.",
-  },
-  {
-    no: "06",
-    title: "Conversion",
-    icon: "🎯",
-    chip: "bg-[#D9C8F5]",
-    desc: "Calls to action, forms, and the small decisions between a visitor landing and converting.",
-  },
+  { no: "01", title: "User experience", icon: "🧭", chip: "bg-[#E7DBFA]", desc: "How visitors actually move through your site — navigation, clarity, and friction points that make people leave." },
+  { no: "02", title: "SEO", icon: "🔎", chip: "bg-[#B9EBD3]", desc: "Titles, headings and structure — what's keeping search engines from understanding your pages." },
+  { no: "03", title: "Performance", icon: "⚡", chip: "bg-[#FFE6CE]", desc: "Load times and technical drag that cost you visitors before they even see the page." },
+  { no: "04", title: "Accessibility", icon: "♿", chip: "bg-[#FFF1BE]", desc: "Contrast, labels and structure — so the site works for every visitor, not just the ones it was tested on." },
+  { no: "05", title: "Copywriting", icon: "✍️", chip: "bg-[#FFDAD1]", desc: "Whether your headlines actually say what your product does, and why anyone should care." },
+  { no: "06", title: "Conversion", icon: "🎯", chip: "bg-[#D9C8F5]", desc: "Calls to action, forms, and the small decisions between a visitor landing and converting." },
 ];
 
 const steps = [
-  {
-    no: "01",
-    title: "Paste your URL",
-    desc: "Drop in your homepage — no account, no install, no tracking script to add.",
-  },
-  {
-    no: "02",
-    title: "AI inspects your site",
-    desc: "We crawl the page and run it through all six checks, the same way a human auditor would — just in under a minute.",
-  },
-  {
-    no: "03",
-    title: "Get your report",
-    desc: "A free preview shows the headline issues. Unlock the full breakdown with fix-it steps for €8.",
-  },
+  { no: "01", title: "Paste your URL", desc: "Drop in your homepage — no account, no install, no tracking script to add." },
+  { no: "02", title: "AI inspects your site", desc: "We crawl the page and run it through all six checks, the same way a human auditor would — just in under a minute." },
+  { no: "03", title: "Get your report", desc: "A free preview shows the headline issues. Unlock the full breakdown with fix-it steps for €8." },
 ];
 
 const faqs = [
-  {
-    q: "Do I need to create an account?",
-    a: "No. Paste your URL and get a free preview instantly — no signup, no email required.",
-  },
-  {
-    q: "How long does an audit take?",
-    a: "Under 60 seconds for most sites. Larger, image-heavy pages may take a little longer.",
-  },
-  {
-    q: "What counts as one audit?",
-    a: "One audit covers a single URL across all six areas. To check multiple pages, run a separate audit for each.",
-  },
-  {
-    q: "Can I re-run the audit after fixing issues?",
-    a: "Yes — re-run anytime to see your updated score and confirm the fixes worked.",
-  },
+  { q: "Do I need to create an account?", a: "No. Paste your URL and get a free preview instantly — no signup, no email required." },
+  { q: "How long does an audit take?", a: "Under 60 seconds for most sites. Larger, image-heavy pages may take a little longer." },
+  { q: "What counts as one audit?", a: "One audit covers a single URL across all six areas. To check multiple pages, run a separate audit for each." },
+  { q: "Can I re-run the audit after fixing issues?", a: "Yes — re-run anytime to see your updated score and confirm the fixes worked." },
+];
+
+const loadingSteps = [
+  "Connecting to your website...",
+  "Reading your sitemap...",
+  "Analyzing pages in detail...",
+  "Running AI audit across 6 areas...",
+  "Almost done...",
 ];
 
 function LogoMark({ size = 34 }: { size?: number }) {
@@ -106,16 +54,19 @@ function LogoMark({ size = 34 }: { size?: number }) {
 }
 
 export default function Home() {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState("https://");
   const [auditId, setAuditId] = useState("");
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<AuditResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const auditFormRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -133,26 +84,66 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStepIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingStepIndex((prev) =>
+        prev < loadingSteps.length - 1 ? prev + 1 : prev
+      );
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (isLoading) {
+      loadingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (result) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
+
   async function handleInspect() {
-    if (!url.trim()) {
+    if (!url.trim() || url.trim() === "https://") {
       setError("Please enter a website URL.");
       return;
     }
+
+    const normalizedUrl = /^https?:\/\//i.test(url.trim())
+      ? url.trim()
+      : `https://${url.trim()}`;
+
     setIsLoading(true);
     setError("");
     setResult(null);
+
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
-      if (!response.ok) throw new Error("The website could not be inspected.");
+
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "The website could not be inspected.");
+      }
+
       setResult(data);
       setAuditId(data.auditId);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -163,22 +154,31 @@ export default function Home() {
       setError("Please enter your email address.");
       return;
     }
-    if (!url.trim()) {
+
+    if (!url.trim() || url.trim() === "https://") {
       setError("Please enter a website URL.");
       return;
     }
+
     if (!auditId) {
       setError("Please inspect your website first.");
       return;
     }
+
+    const normalizedUrl = /^https?:\/\//i.test(url.trim())
+      ? url.trim()
+      : `https://${url.trim()}`;
+
     setIsCheckingOut(true);
     setError("");
+
     try {
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, url, auditId }),
+        body: JSON.stringify({ email, url: normalizedUrl, auditId }),
       });
+
       if (!response.ok) throw new Error("Checkout session could not be created.");
       const data = await response.json();
       if (!data.url) throw new Error("Stripe checkout URL is missing.");
@@ -212,13 +212,12 @@ export default function Home() {
             <a href="#pricing" className="opacity-75 transition-opacity hover:opacity-100">Pricing</a>
             <a href="#faq" className="opacity-75 transition-opacity hover:opacity-100">FAQ</a>
           </div>
-          <button
-            type="button"
-            onClick={scrollToAudit}
-            className="rounded-xl border-[1.5px] border-[#18151A] bg-[#18151A] px-[18px] py-2.5 text-[14px] font-bold text-[#F8F6F1] shadow-[3px_3px_0_#8B6FD9] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#8B6FD9]"
+          <a
+            href="mailto:support@page-inspector.com"
+            className="font-mono-utility rounded-xl border-[1.5px] border-[#18151A] bg-white px-[18px] py-2.5 text-[13.5px] font-semibold text-[#18151A] shadow-[3px_3px_0_#18151A] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#18151A]"
           >
-            Inspect my site
-          </button>
+            support@page-inspector.com
+          </a>
         </div>
       </nav>
 
@@ -295,24 +294,15 @@ export default function Home() {
                 <div className="mb-3.5 h-[110px] w-full rounded-lg bg-gradient-to-br from-[#FFE6CE] to-[#E7DBFA]" />
                 <div className="h-3 w-[60%] rounded-lg bg-[#EFEAF7]" />
 
-                <div
-                  className="animate-pin-in absolute right-[-14px] top-[38px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#FFDAD1] py-[5px] pl-[5px] pr-[11px] opacity-0 shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]"
-                  style={{ animationDelay: "1.1s" }}
-                >
+                <div className="animate-pin-in absolute right-[-14px] top-[38px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#FFDAD1] py-[5px] pl-[5px] pr-[11px] shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]" style={{ animationDelay: "1.1s" }}>
                   <span className="font-mono-utility flex h-5 w-5 items-center justify-center rounded-full bg-[#FF8B76] text-[11px] text-white">!</span>
                   <span className="font-mono-utility text-[12px] font-semibold">Slow LCP: 4.2s</span>
                 </div>
-                <div
-                  className="animate-pin-in absolute left-[-18px] top-[150px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#FFF1BE] py-[5px] pl-[5px] pr-[11px] opacity-0 shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]"
-                  style={{ animationDelay: "1.6s" }}
-                >
+                <div className="animate-pin-in absolute left-[-18px] top-[150px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#FFF1BE] py-[5px] pl-[5px] pr-[11px] shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]" style={{ animationDelay: "1.6s" }}>
                   <span className="font-mono-utility flex h-5 w-5 items-center justify-center rounded-full bg-[#E0A800] text-[11px] text-white">6</span>
                   <span className="font-mono-utility text-[12px] font-semibold">Missing alt text</span>
                 </div>
-                <div
-                  className="animate-pin-in absolute bottom-[26px] right-[10px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#B9EBD3] py-[5px] pl-[5px] pr-[11px] opacity-0 shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]"
-                  style={{ animationDelay: "2.1s" }}
-                >
+                <div className="animate-pin-in absolute bottom-[26px] right-[10px] flex items-center gap-1.5 rounded-full border-[1.5px] border-[#18151A] bg-[#B9EBD3] py-[5px] pl-[5px] pr-[11px] shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]" style={{ animationDelay: "2.1s" }}>
                   <span className="font-mono-utility flex h-5 w-5 items-center justify-center rounded-full bg-[#3FAE7C] text-[11px] text-white">✓</span>
                   <span className="font-mono-utility text-[12px] font-semibold">Strong CTA copy</span>
                 </div>
@@ -325,20 +315,57 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Live loading / result — appears once the user actually runs an audit */}
         {isLoading && (
-          <div className="reveal in-view mx-auto mt-12 max-w-[760px] rounded-2xl border-[1.5px] border-[#18151A] bg-white p-6 shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)]">
-            <p className="font-display text-lg font-semibold">Inspecting your website...</p>
-            <div className="mt-4 space-y-2 text-sm text-[#5B5560]">
-              <p>✓ Connecting to PageInspector</p>
-              <p>✓ Checking website details</p>
-              <p className="animate-pulse-slow">Generating your preview...</p>
+          <div ref={loadingRef} className="mx-auto mt-12 max-w-[560px] rounded-2xl border-[1.5px] border-[#18151A] bg-white p-7 shadow-[0_4px_8px_rgba(24,21,26,0.06),0_20px_40px_rgba(24,21,26,0.10)] sm:p-8">
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[#18151A] bg-[#E7DBFA]">
+                <span className="absolute inset-0 animate-ping rounded-full bg-[#8B6FD9]/30" />
+                <span className="relative text-2xl">🔍</span>
+              </div>
+              <div>
+                <p className="font-display text-lg font-semibold">Inspecting your website</p>
+                <p className="mt-0.5 text-[13.5px] text-[#5B5560]">This usually takes 20–40 seconds</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2.5">
+              {loadingSteps.map((step, i) => {
+                const isDone = i < loadingStepIndex;
+                const isCurrent = i === loadingStepIndex;
+                return (
+                  <div key={step} className="flex items-center gap-3 text-[14px]">
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] transition-colors ${
+                        isDone
+                          ? "bg-[#B9EBD3] text-[#1E6B48]"
+                          : isCurrent
+                          ? "border-[1.5px] border-[#8B6FD9]"
+                          : "border-[1.5px] border-black/15"
+                      }`}
+                    >
+                      {isDone ? "✓" : isCurrent ? (
+                        <span className="block h-2 w-2 animate-pulse-slow rounded-full bg-[#8B6FD9]" />
+                      ) : null}
+                    </span>
+                    <span className={isDone ? "text-[#18151A]" : isCurrent ? "font-semibold text-[#18151A]" : "text-[#5B5560]"}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 h-2 w-full overflow-hidden rounded-full bg-black/[0.06]">
+              <div
+                className="h-full rounded-full bg-[#8B6FD9] transition-all duration-700 ease-out"
+                style={{ width: `${((loadingStepIndex + 1) / loadingSteps.length) * 100}%` }}
+              />
             </div>
           </div>
         )}
 
         {result && (
-          <div className="reveal in-view mx-auto mt-12 max-w-[760px] rounded-2xl border-[1.5px] border-[#18151A] bg-white p-6 shadow-[0_4px_8px_rgba(24,21,26,0.06),0_20px_40px_rgba(24,21,26,0.10)] sm:p-8">
+          <div ref={resultRef} className="reveal in-view mx-auto mt-12 max-w-[760px] scroll-mt-24 rounded-2xl border-[1.5px] border-[#18151A] bg-white p-6 shadow-[0_4px_8px_rgba(24,21,26,0.06),0_20px_40px_rgba(24,21,26,0.10)] sm:p-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-mono-utility text-xs font-semibold uppercase tracking-wide text-[#5B5560]">Website inspected</p>
@@ -418,10 +445,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((c) => (
-            <article
-              key={c.title}
-              className="reveal relative overflow-hidden rounded-[20px] border-[1.5px] border-[#18151A] bg-white p-[26px] shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)] transition-transform duration-200 hover:-translate-y-1.5 hover:shadow-[0_4px_8px_rgba(24,21,26,0.06),0_20px_40px_rgba(24,21,26,0.10)]"
-            >
+            <article key={c.title} className="reveal relative overflow-hidden rounded-[20px] border-[1.5px] border-[#18151A] bg-white p-[26px] shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)] transition-transform duration-200 hover:-translate-y-1.5 hover:shadow-[0_4px_8px_rgba(24,21,26,0.06),0_20px_40px_rgba(24,21,26,0.10)]">
               <span className="font-mono-utility absolute right-[22px] top-5 text-xs font-semibold text-[#18151A]/25">{c.no}</span>
               <div className={`mb-[18px] flex h-11 w-11 items-center justify-center rounded-xl border-[1.5px] border-[#18151A] text-xl ${c.chip}`}>
                 {c.icon}
