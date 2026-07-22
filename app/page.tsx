@@ -214,7 +214,7 @@ export default function Home() {
           </div>
           <a
             href="mailto:support@page-inspector.com"
-            className="font-mono-utility rounded-xl border-[1.5px] border-[#18151A] bg-white px-[18px] py-2.5 text-[13.5px] font-semibold text-[#18151A] shadow-[3px_3px_0_#18151A] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#18151A]"
+            className="font-mono-utility rounded-xl border-[1.5px] border-[#18151A] bg-white px-[18px] py-2.5 text-[8px] font-semibold text-[#18151A] shadow-[3px_3px_0_#18151A] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#18151A]"
           >
             support@page-inspector.com
           </a>
