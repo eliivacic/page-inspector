@@ -24,3 +24,75 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.font-display {
+  font-family: var(--font-fredoka), ui-rounded, sans-serif;
+}
+
+.font-mono-utility {
+  font-family: var(--font-jbmono), ui-monospace, monospace;
+}
+
+.browser-body-bg {
+  background: repeating-linear-gradient(
+    180deg,
+    #fff,
+    #fff 46px,
+    #f3f0fa 46px,
+    #f3f0fa 47px
+  );
+}
+
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  8% { opacity: 1; }
+  50% { top: calc(100% - 3px); opacity: 1; }
+  58% { opacity: 0; }
+  100% { top: calc(100% - 3px); opacity: 0; }
+}
+.animate-scan {
+  animation: scan 3.2s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-bob {
+  animation: bob 4s ease-in-out infinite;
+}
+
+@keyframes pinIn {
+  0% { opacity: 0; transform: translateY(6px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pin-in {
+  opacity: 0;
+  animation: pinIn 0.5s ease forwards;
+}
+
+@keyframes pulseCta {
+  0%, 100% { box-shadow: 3px 3px 0 #18151A; }
+  50% { box-shadow: 6px 6px 0 #18151A; }
+}
+.animate-cta-pulse {
+  animation: pulseCta 2.2s ease-in-out infinite;
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-slow {
+  animation: pulseSlow 1.6s ease-in-out infinite;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
