@@ -446,7 +446,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { error: emailError } = await resend.emails.send({
-      from: "PageInspector <onboarding@resend.dev>",
+      from: "PageInspector <reports@page-inspector.com>",
       to: email,
       subject: "Your PageInspector Website Audit Report",
       html: buildReportEmailHtml(audit),
@@ -462,7 +462,7 @@ export async function POST(req: NextRequest) {
     if (ownerEmail) {
       try {
         await resend.emails.send({
-          from: "PageInspector <onboarding@resend.dev>",
+          from: "PageInspector <reports@page-inspector.com>",
           to: ownerEmail,
           subject: `💰 New sale: ${audit.website}`,
           html: buildOwnerNotificationHtml({
