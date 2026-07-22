@@ -1,6 +1,5 @@
 import Stripe from "stripe";
 import { Resend } from "resend";
-import PDFDocument from "pdfkit";
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
@@ -10,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const ownerEmail = process.env.OWNER_EMAIL;
 
 // ---------- Design tokens ----------
 
@@ -18,14 +18,24 @@ const SOFT = "#5B5560";
 const LILAC = "#8B6FD9";
 const LILAC_LIGHT = "#E7DBFA";
 const MINT = "#1E6B48";
+const MINT_BG = "#B9EBD3";
 const AMBER = "#8A6800";
+const AMBER_BG = "#FFF1BE";
 const CORAL = "#9C2E1B";
-const BORDER = "#D9D2CC";
+const CORAL_BG = "#FFDAD1";
+const BORDER = "#EAE6DF";
+const BG = "#F8F6F1";
 
 function scoreColor(score: number) {
   if (score >= 75) return MINT;
   if (score >= 50) return AMBER;
   return CORAL;
+}
+
+function scoreBg(score: number) {
+  if (score >= 75) return MINT_BG;
+  if (score >= 50) return AMBER_BG;
+  return CORAL_BG;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -37,306 +47,353 @@ const CATEGORY_LABELS: Record<string, string> = {
   conversion: "Conversion",
 };
 
-const PAGE_MARGIN = 56;
-const BOTTOM_SAFE_Y = 780; // A4 height (~842pt) minus margin — stop writing past this
+const CATEGORY_ICONS: Record<string, string> = {
+  seo: "🔎",
+  ux: "🧭",
+  performance: "⚡",
+  accessibility: "♿",
+  copywriting: "✍️",
+  conversion: "🎯",
+};
 
-// ---------- PDF report generation ----------
+// ---------- Email section builders ----------
 
-function buildReportPdfBuffer(audit: {
-  website: string;
-  score: number;
-  report: any;
-}): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: PAGE_MARGIN });
-    const chunks: Buffer[] = [];
+function categoryScorecard(categoryScores: Record<string, number>) {
+  const rows = Object.keys(CATEGORY_LABELS)
+    .filter((key) => typeof categoryScores?.[key] === "number")
+    .map((key) => {
+      const value = categoryScores[key];
+      const color = scoreColor(value);
 
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
+      return `
+      <tr>
+        <td style="padding:6px 0;font-size:13px;font-weight:600;color:${INK};width:150px;">
+          ${CATEGORY_LABELS[key]}
+        </td>
+        <td style="padding:6px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="background:${BORDER};border-radius:6px;height:8px;">
+                <div style="background:${color};width:${value}%;height:8px;border-radius:6px;"></div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td style="padding:6px 0 6px 12px;font-size:13px;font-weight:700;color:${color};width:36px;text-align:right;">
+          ${value}
+        </td>
+      </tr>`;
+    })
+    .join("");
 
-    const r = audit.report;
-    const pageWidth = doc.page.width;
-    const contentWidth = pageWidth - PAGE_MARGIN * 2;
+  if (!rows) return "";
 
-    // Ensures we never write past the bottom margin — adds a new page if needed
-    function ensureSpace(estimatedHeight: number) {
-      if (doc.y + estimatedHeight > BOTTOM_SAFE_Y) {
-        doc.addPage();
-        doc.y = PAGE_MARGIN;
-      }
-    }
-
-    function heightOfText(text: string, font: string, size: number, width: number) {
-      doc.font(font).fontSize(size);
-      return doc.heightOfString(text, { width });
-    }
-
-    // ---------- Cover header ----------
-    doc.rect(0, 0, pageWidth, 130).fill(INK);
-    doc
-      .fillColor("#ffffff")
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .text("Page Inspector", 56, 36);
-    doc
-      .font("Helvetica")
-      .fontSize(13)
-      .fillColor(LILAC_LIGHT)
-      .text("Website Audit Report", 56, 62);
-    doc
-      .fontSize(10)
-      .fillColor("#D8CFED")
-      .text(audit.website, 56, 84, { width: contentWidth });
-
-    doc.y = 160;
-    doc.x = PAGE_MARGIN;
-
-    // ---------- Overall score ----------
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(26)
-      .fillColor(scoreColor(audit.score))
-      .text(`${audit.score}/100`, PAGE_MARGIN, doc.y);
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor(SOFT)
-      .text("Overall score", PAGE_MARGIN, doc.y + 2);
-
-    doc.moveDown(2);
-    doc.x = PAGE_MARGIN;
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .fillColor(INK)
-      .text(r.summary?.headline || "", PAGE_MARGIN, doc.y, { width: contentWidth });
-    doc.moveDown(0.5);
-    doc
-      .font("Helvetica")
-      .fontSize(10.5)
-      .fillColor(SOFT)
-      .text(r.summary?.description || "", { width: contentWidth });
-
-    // ---------- Introduction ----------
-    doc.moveDown(1.5);
-    ensureSpace(40);
-    doc.font("Helvetica-Bold").fontSize(14).fillColor(INK).text("Introduction", PAGE_MARGIN);
-    doc.moveDown(0.3);
-    doc
-      .font("Helvetica")
-      .fontSize(10.5)
-      .fillColor(SOFT)
-      .text(r.introduction || "", { width: contentWidth });
-
-    // ---------- Pages analyzed ----------
-    if (Array.isArray(r.pages_analyzed) && r.pages_analyzed.length > 0) {
-      doc.moveDown(1.2);
-      ensureSpace(40);
-      doc.font("Helvetica-Bold").fontSize(14).fillColor(INK).text("Pages Analyzed", PAGE_MARGIN);
-      doc.moveDown(0.3);
-
-      r.pages_analyzed.forEach((p: { url: string; note?: string }) => {
-        const estHeight =
-          heightOfText(`• ${p.url}`, "Helvetica-Bold", 9.5, contentWidth) +
-          (p.note ? heightOfText(p.note, "Helvetica", 9.5, contentWidth - 12) : 0) +
-          10;
-        ensureSpace(estHeight);
-
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(9.5)
-          .fillColor(LILAC)
-          .text(`• ${p.url}`, PAGE_MARGIN, doc.y, { width: contentWidth });
-        if (p.note) {
-          doc
-            .font("Helvetica")
-            .fontSize(9.5)
-            .fillColor(SOFT)
-            .text(p.note, PAGE_MARGIN + 12, doc.y, { width: contentWidth - 12 });
-        }
-        doc.moveDown(0.3);
-      });
-    }
-
-    // ---------- Score by category ----------
-    doc.moveDown(1);
-    ensureSpace(160);
-    doc.font("Helvetica-Bold").fontSize(14).fillColor(INK).text("Score by Category", PAGE_MARGIN);
-    doc.moveDown(0.4);
-
-    const cs = r.category_scores || {};
-    const barWidth = contentWidth - 140;
-
-    Object.keys(CATEGORY_LABELS).forEach((key) => {
-      if (typeof cs[key] !== "number") return;
-
-      ensureSpace(20);
-      const y = doc.y;
-
-      doc
-        .font("Helvetica")
-        .fontSize(9.5)
-        .fillColor(INK)
-        .text(CATEGORY_LABELS[key], PAGE_MARGIN, y, { width: 130 });
-
-      doc.rect(PAGE_MARGIN + 135, y + 1, barWidth, 7).fill(BORDER);
-      doc
-        .rect(PAGE_MARGIN + 135, y + 1, (barWidth * cs[key]) / 100, 7)
-        .fill(scoreColor(cs[key]));
-
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(9.5)
-        .fillColor(scoreColor(cs[key]))
-        .text(`${cs[key]}`, PAGE_MARGIN + 135 + barWidth + 8, y, { width: 30 });
-
-      doc.y = y + 18;
-    });
-
-    // ---------- Category detail sections (one page each, with overflow protection) ----------
-    Object.keys(CATEGORY_LABELS).forEach((key) => {
-      const category = r[key];
-      if (!category) return;
-
-      doc.addPage();
-      doc.y = PAGE_MARGIN;
-
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(17)
-        .fillColor(INK)
-        .text(CATEGORY_LABELS[key], PAGE_MARGIN, PAGE_MARGIN);
-
-      if (typeof cs[key] === "number") {
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(11)
-          .fillColor(scoreColor(cs[key]))
-          .text(`Score: ${cs[key]}/100`, PAGE_MARGIN, PAGE_MARGIN + 24);
-      }
-
-      doc.y = PAGE_MARGIN + 60;
-      doc.x = PAGE_MARGIN;
-
-      doc.font("Helvetica-Bold").fontSize(12.5).fillColor(INK).text("Issues Found", PAGE_MARGIN);
-      doc.moveDown(0.4);
-
-      (category.issues || []).forEach((issue: string, i: number) => {
-        const label = `${i + 1}. `;
-        const estHeight = heightOfText(label + issue, "Helvetica", 10, contentWidth) + 8;
-        ensureSpace(estHeight);
-
-        const startY = doc.y;
-        doc.font("Helvetica-Bold").fontSize(10).fillColor(CORAL);
-        const labelWidth = doc.widthOfString(label);
-        doc.text(label, PAGE_MARGIN, startY, { continued: true, width: contentWidth });
-        doc.font("Helvetica").fillColor(INK).text(issue, { width: contentWidth });
-        doc.moveDown(0.5);
-      });
-
-      doc.moveDown(0.6);
-      ensureSpace(30);
-      doc.font("Helvetica-Bold").fontSize(12.5).fillColor(INK).text("Recommended Options", PAGE_MARGIN);
-      doc.moveDown(0.4);
-
-      (category.recommendations || []).forEach((rec: string, i: number) => {
-        const label = `Option ${String.fromCharCode(65 + i)}: `;
-        const estHeight = heightOfText(label + rec, "Helvetica", 10, contentWidth) + 8;
-        ensureSpace(estHeight);
-
-        const startY = doc.y;
-        doc.font("Helvetica-Bold").fontSize(10).fillColor(MINT);
-        doc.text(label, PAGE_MARGIN, startY, { continued: true, width: contentWidth });
-        doc.font("Helvetica").fillColor(INK).text(rec, { width: contentWidth });
-        doc.moveDown(0.5);
-      });
-    });
-
-    // ---------- Priority actions (final page) ----------
-    doc.addPage();
-    doc.y = PAGE_MARGIN;
-    doc.font("Helvetica-Bold").fontSize(17).fillColor(INK).text("Priority Actions", PAGE_MARGIN);
-    doc.moveDown(1.2);
-    doc.x = PAGE_MARGIN;
-
-    (r.priority_actions || []).forEach((item: { priority: string; action: string }) => {
-      const color =
-        item.priority === "high" ? CORAL : item.priority === "medium" ? AMBER : MINT;
-      const label = `[${item.priority?.toUpperCase()}] `;
-      const estHeight = heightOfText(label + item.action, "Helvetica", 10, contentWidth) + 12;
-      ensureSpace(estHeight);
-
-      const startY = doc.y;
-      doc.font("Helvetica-Bold").fontSize(10).fillColor(color);
-      doc.text(label, PAGE_MARGIN, startY, { continued: true, width: contentWidth });
-      doc.font("Helvetica").fillColor(INK).text(item.action, { width: contentWidth });
-
-      doc.moveDown(0.8);
-    });
-
-    doc.moveDown(2);
-    ensureSpace(20);
-    doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor(SOFT)
-      .text("Thank you for using Page Inspector.", PAGE_MARGIN);
-
-    doc.end();
-  });
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;background:${BG};border:1.5px solid ${BORDER};border-radius:14px;">
+    <tr>
+      <td style="padding:20px 22px;">
+        <p style="margin:0 0 12px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
+          Score by category
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          ${rows}
+        </table>
+      </td>
+    </tr>
+  </table>`;
 }
 
-// ---------- Short notification email ----------
+function pagesAnalyzedSection(pages: { url: string; note?: string }[]) {
+  if (!Array.isArray(pages) || pages.length === 0) return "";
 
-function buildNotificationEmailHtml(audit: { score: number; website: string }) {
+  const rows = pages
+    .map(
+      (p) => `
+    <div style="margin:0 0 12px 0;">
+      <p style="margin:0 0 3px 0;font-size:12.5px;font-weight:700;color:${LILAC};word-break:break-all;">
+        ${p.url}
+      </p>
+      ${
+        p.note
+          ? `<p style="margin:0;font-size:13px;line-height:1.5;color:${SOFT};">${p.note}</p>`
+          : ""
+      }
+    </div>`
+    )
+    .join("");
+
   return `
-<div style="background:#F8F6F1;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1.5px solid ${INK};">
+  <tr>
+    <td style="padding:0 36px 8px 36px;">
+      <h2 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:${INK};">
+        Pages analyzed
+      </h2>
+      ${rows}
+    </td>
+  </tr>`;
+}
+
+function issuesList(items: string[] = []) {
+  if (!items.length) return "";
+  return `
+    <ol style="margin:0 0 14px 0;padding:0 0 0 20px;">
+      ${items
+        .map(
+          (item) => `
+        <li style="margin:0 0 8px 0;font-size:14px;line-height:1.55;color:${INK};">
+          ${item}
+        </li>`
+        )
+        .join("")}
+    </ol>`;
+}
+
+function recommendationsList(items: string[] = []) {
+  if (!items.length) return "";
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px 0;">
+      <tr>
+        <td style="background:${MINT_BG};border-radius:10px;padding:14px 16px;">
+          <p style="margin:0 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${MINT};">
+            Options to fix this
+          </p>
+          <ul style="margin:0;padding:0 0 0 18px;">
+            ${items
+              .map(
+                (item, i) => `
+              <li style="margin:0 0 8px 0;font-size:13.5px;line-height:1.5;color:${INK};">
+                <strong>Option ${String.fromCharCode(65 + i)}: </strong>${item}
+              </li>`
+              )
+              .join("")}
+          </ul>
+        </td>
+      </tr>
+    </table>`;
+}
+
+function categorySection(
+  key: string,
+  category?: { issues: string[]; recommendations: string[] },
+  score?: number
+) {
+  if (!category) return "";
+
+  const badge =
+    typeof score === "number"
+      ? `<span style="display:inline-block;background:${scoreBg(score)};color:${scoreColor(score)};font-size:12px;font-weight:700;padding:2px 10px;border-radius:100px;margin-left:8px;">${score}/100</span>`
+      : "";
+
+  return `
+  <tr>
+    <td style="padding:0 36px 28px 36px;">
+      <h2 style="margin:0 0 14px 0;font-size:18px;font-weight:700;color:${INK};">
+        ${CATEGORY_ICONS[key] || ""} ${CATEGORY_LABELS[key]}${badge}
+      </h2>
+      <p style="margin:0 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
+        Issues found
+      </p>
+      ${issuesList(category.issues)}
+      ${recommendationsList(category.recommendations)}
+    </td>
+  </tr>
+  <tr><td style="padding:0 36px;"><div style="border-top:1px solid ${BORDER};"></div></td></tr>`;
+}
+
+function priorityBadge(priority: string) {
+  const map: Record<string, { bg: string; fg: string; label: string }> = {
+    high: { bg: CORAL_BG, fg: CORAL, label: "High priority" },
+    medium: { bg: AMBER_BG, fg: AMBER, label: "Medium priority" },
+    low: { bg: MINT_BG, fg: MINT, label: "Low priority" },
+  };
+
+  const style = map[priority?.toLowerCase()] || map.medium;
+
+  return `<span style="display:inline-block;background:${style.bg};color:${style.fg};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:3px 10px;border-radius:100px;white-space:nowrap;">${style.label}</span>`;
+}
+
+// ---------- Full report email ----------
+
+function buildReportEmailHtml(audit: { score: number; report: any; website: string }) {
+  const r = audit.report;
+  const cs = r.category_scores || {};
+
+  return `
+<div style="background:${BG};padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1.5px solid ${INK};">
+
+    <!-- Header -->
     <tr>
       <td style="background:${INK};padding:32px 36px;">
         <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${LILAC_LIGHT};">
           Page Inspector
         </p>
-        <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">
-          Your full audit report is attached
+        <h1 style="margin:0;font-size:24px;font-weight:700;color:#ffffff;">
+          Your website audit report
         </h1>
+        <p style="margin:8px 0 0 0;font-size:13.5px;color:rgba(255,255,255,0.65);word-break:break-all;">
+          ${audit.website}
+        </p>
       </td>
     </tr>
+
+    <!-- Score + summary -->
     <tr>
-      <td style="padding:32px 36px;">
+      <td style="padding:32px 36px 8px 36px;">
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
-            <td style="width:72px;height:72px;border-radius:50%;background:${LILAC_LIGHT};border:2px solid ${INK};text-align:center;vertical-align:middle;">
-              <span style="font-size:22px;font-weight:700;color:${INK};">${audit.score}</span>
+            <td style="width:88px;height:88px;border-radius:50%;background:${LILAC_LIGHT};border:2px solid ${INK};text-align:center;vertical-align:middle;">
+              <span style="font-size:28px;font-weight:700;color:${INK};">${audit.score}</span>
             </td>
-            <td style="padding-left:18px;">
+            <td style="padding-left:20px;">
               <p style="margin:0 0 4px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
-                Overall score
+                Overall score / 100
               </p>
-              <p style="margin:0;font-size:13.5px;color:${SOFT};max-width:340px;">
-                for ${audit.website}
+              <p style="margin:0;font-size:15px;font-weight:600;color:${INK};max-width:380px;">
+                ${r.summary?.headline || ""}
               </p>
             </td>
           </tr>
         </table>
 
-        <p style="margin:24px 0 0 0;font-size:14.5px;line-height:1.6;color:${INK};">
-          We've put together a full, detailed breakdown across all six areas —
-          SEO, user experience, performance, accessibility, copywriting and
-          conversion — with concrete findings and multiple fix options for
-          each. It's attached to this email as a PDF.
+        <p style="margin:24px 0 0 0;font-size:14.5px;line-height:1.6;color:${SOFT};">
+          ${r.summary?.description || ""}
         </p>
 
+        ${categoryScorecard(cs)}
+      </td>
+    </tr>
+
+    <!-- Introduction -->
+    <tr><td style="padding:28px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
+    <tr>
+      <td style="padding:28px 36px 8px 36px;">
+        <h2 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:${INK};">
+          Introduction
+        </h2>
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${INK};">
+          ${r.introduction || ""}
+        </p>
+      </td>
+    </tr>
+
+    <!-- Pages analyzed -->
+    <tr><td style="padding:8px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
+    ${pagesAnalyzedSection(r.pages_analyzed)}
+
+    <!-- Categories -->
+    <tr><td style="padding:8px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
+    <tr>
+      <td style="padding:28px 36px 8px 36px;">
+        <h2 style="margin:0;font-size:18px;font-weight:700;color:${INK};">
+          Detailed findings
+        </h2>
+      </td>
+    </tr>
+    ${categorySection("seo", r.seo, cs.seo)}
+    ${categorySection("ux", r.ux, cs.ux)}
+    ${categorySection("performance", r.performance, cs.performance)}
+    ${categorySection("accessibility", r.accessibility, cs.accessibility)}
+    ${categorySection("conversion", r.conversion, cs.conversion)}
+    ${categorySection("copywriting", r.copywriting, cs.copywriting)}
+
+    <!-- Priority actions -->
+    <tr>
+      <td style="padding:8px 36px 32px 36px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};border-radius:14px;border:1.5px solid ${BORDER};">
+          <tr>
+            <td style="padding:22px 24px;">
+              <h2 style="margin:0 0 16px 0;font-size:16px;font-weight:700;color:${INK};">
+                Priority actions
+              </h2>
+              ${(r.priority_actions || [])
+                .map(
+                  (item: { priority: string; action: string }, i: number) => `
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:${i === r.priority_actions.length - 1 ? "0" : "12px"};">
+                  <tr>
+                    <td style="width:130px;vertical-align:top;padding-top:1px;">
+                      ${priorityBadge(item.priority)}
+                    </td>
+                    <td style="font-size:14px;line-height:1.5;color:${INK};">
+                      ${item.action}
+                    </td>
+                  </tr>
+                </table>`
+                )
+                .join("")}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding:0 36px 32px 36px;">
+        <div style="border-top:1.5px solid ${BORDER};padding-top:20px;">
+          <p style="margin:0;font-size:13px;color:${SOFT};">
+            Thanks for using Page Inspector. Questions about this report?
+            Reply to this email and we'll take a look.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <p style="text-align:center;font-size:12px;color:${SOFT};margin:20px 0 0 0;">
+    © 2026 Page Inspector
+  </p>
+</div>`;
+}
+
+// ---------- Owner notification email ----------
+
+function buildOwnerNotificationHtml(audit: {
+  score: number;
+  website: string;
+  email: string;
+}) {
+  return `
+<div style="background:${BG};padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1.5px solid ${INK};">
+    <tr>
+      <td style="background:${MINT};padding:24px 32px;">
+        <p style="margin:0;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ffffff;">
+          💰 New sale
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:28px 32px;">
+        <h1 style="margin:0 0 18px 0;font-size:20px;font-weight:700;color:${INK};">
+          Someone just bought a full report
+        </h1>
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+          <tr>
+            <td style="padding:6px 0;color:${SOFT};width:110px;">Website</td>
+            <td style="padding:6px 0;color:${INK};font-weight:600;word-break:break-all;">${audit.website}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:${SOFT};">Customer email</td>
+            <td style="padding:6px 0;color:${INK};font-weight:600;word-break:break-all;">${audit.email}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:${SOFT};">Score</td>
+            <td style="padding:6px 0;color:${INK};font-weight:600;">${audit.score}/100</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:${SOFT};">Amount</td>
+            <td style="padding:6px 0;color:${INK};font-weight:600;">€8.00</td>
+          </tr>
+        </table>
+
         <p style="margin:20px 0 0 0;font-size:13px;color:${SOFT};">
-          Questions about the report? Just reply to this email.
+          The full report has already been sent to the customer automatically.
         </p>
       </td>
     </tr>
   </table>
-  <p style="text-align:center;font-size:12px;color:${SOFT};margin:20px 0 0 0;">
-    © 2026 Page Inspector
-  </p>
 </div>`;
 }
 
@@ -388,26 +445,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, duplicate: true });
     }
 
-    let pdfBuffer: Buffer;
-
-    try {
-      pdfBuffer = await buildReportPdfBuffer(audit);
-    } catch (pdfError) {
-      console.error("PDF generation failed:", pdfError);
-      return NextResponse.json({ error: "Could not generate PDF report" }, { status: 500 });
-    }
-
     const { error: emailError } = await resend.emails.send({
       from: "PageInspector <onboarding@resend.dev>",
       to: email,
       subject: "Your PageInspector Website Audit Report",
-      html: buildNotificationEmailHtml(audit),
-      attachments: [
-        {
-          filename: "page-inspector-audit-report.pdf",
-          content: pdfBuffer.toString("base64"),
-        },
-      ],
+      html: buildReportEmailHtml(audit),
     });
 
     if (emailError) {
@@ -416,6 +458,26 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("✅ Report sent to:", email);
+
+    if (ownerEmail) {
+      try {
+        await resend.emails.send({
+          from: "PageInspector <onboarding@resend.dev>",
+          to: ownerEmail,
+          subject: `💰 New sale: ${audit.website}`,
+          html: buildOwnerNotificationHtml({
+            score: audit.score,
+            website: audit.website,
+            email,
+          }),
+        });
+        console.log("✅ Owner notified of sale");
+      } catch (ownerEmailError) {
+        console.error("Could not send owner notification:", ownerEmailError);
+      }
+    } else {
+      console.log("OWNER_EMAIL not set, skipping owner notification.");
+    }
 
     const { error: updateError } = await supabase
       .from("audits")
