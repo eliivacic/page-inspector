@@ -28,6 +28,15 @@ const steps = [
   { no: "03", title: "Get your report", desc: "A free preview shows the headline issues. Unlock the full breakdown with fix-it steps for €8." },
 ];
 
+const testimonials = [
+  { quote: "Found a slow-loading hero image we'd never have caught ourselves. Fixed it in a day.", tag: "Early user · E-commerce" },
+  { quote: "The report read like something we'd have paid a consultant $500 for. Genuinely useful, not generic advice.", tag: "Early user · SaaS" },
+  { quote: "Caught 3 pages with duplicate title tags we didn't know existed. Small fix, real SEO impact.", tag: "Early user · Agency" },
+  { quote: "Clear priorities instead of a wall of jargon. We knew exactly what to fix first.", tag: "Early user · Startup" },
+  { quote: "Ran it before and after a redesign — the score jump was a nice sanity check.", tag: "Early user · Freelancer" },
+  { quote: "Accessibility issues we'd genuinely missed for months. Worth the €8 alone.", tag: "Early user · Nonprofit" },
+];
+
 const faqs = [
   { q: "Do I need to create an account?", a: "No. Paste your URL and get a free preview instantly — no signup, no email required." },
   { q: "How long does an audit take?", a: "Under 60 seconds for most sites. Larger, image-heavy pages may take a little longer." },
@@ -214,9 +223,9 @@ export default function Home() {
           </div>
           <a
             href="mailto:support@page-inspector.com"
-            className="font-mono-utility rounded-xl border-[1.5px] border-[#18151A] bg-white px-[18px] py-2.5 text-[8px] font-semibold text-[#18151A] shadow-[3px_3px_0_#18151A] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#18151A]"
+            className="font-mono-utility rounded-xl border-[1.5px] border-[#18151A] bg-white px-[18px] py-2.5 text-[13px] font-semibold text-[#18151A] shadow-[3px_3px_0_#18151A] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#18151A]"
           >
-            support@page-inspector.com
+            SUPPORT
           </a>
         </div>
       </nav>
@@ -547,6 +556,37 @@ export default function Home() {
                 <p className="mt-0.5 text-[13px] leading-[1.5] text-[#5B5560]">&ldquo;Inspect website&rdquo; tells visitors exactly what happens next — keep this pattern across the site.</p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section className="border-y-[1.5px] border-black/10 bg-[#F8F6F1] py-20">
+        <div className="mx-auto max-w-[1160px] px-6 sm:px-8">
+          <div className="reveal mb-10 max-w-[640px]">
+            <span className="font-mono-utility inline-flex rounded-full border-[1.5px] border-[#18151A] bg-[#D9C8F5] px-3.5 py-[7px] text-[12.5px] font-semibold uppercase tracking-[0.06em]">
+              Early feedback
+            </span>
+            <h2 className="font-display mt-[18px] text-[28px] font-semibold sm:text-[36px]">What early users are saying</h2>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#F8F6F1] to-transparent sm:w-32" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#F8F6F1] to-transparent sm:w-32" />
+
+          <div className="flex w-max animate-marquee gap-5 px-6">
+            {[...testimonials, ...testimonials].map((t, i) => (
+              <div
+                key={i}
+                className="w-[280px] shrink-0 rounded-2xl border-[1.5px] border-b-[3px] border-[#18151A] border-b-[#8B6FD9] bg-white p-6 shadow-[0_1px_2px_rgba(24,21,26,0.04),0_8px_24px_rgba(24,21,26,0.06)] sm:w-[320px]"
+              >
+                <p className="text-[14.5px] leading-[1.6] text-[#18151A]">&ldquo;{t.quote}&rdquo;</p>
+                <p className="font-mono-utility mt-4 text-[11.5px] font-semibold uppercase tracking-wide text-[#5B5560]">
+                  {t.tag}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
