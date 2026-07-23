@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+export const maxDuration = 60;
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -60,7 +62,6 @@ async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
     if (xml && xml.includes("<loc>")) {
       let urls = extractSitemapUrls(xml);
 
-      // Sitemap index files point to other sitemap files, not pages directly
       if (xml.includes("<sitemapindex")) {
         const nested: string[] = [];
 
@@ -149,10 +150,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Fetch the homepage
     const homepageHtml = await fetchText(url);
-
-    // 2. Try to discover a real sitemap for this site
     const sitemapUrls = await discoverSitemapUrls(url);
 
     const additionalUrls = sitemapUrls
@@ -170,7 +168,6 @@ export async function POST(request: Request) {
       .filter((u) => u.replace(/\/$/, "") !== url.replace(/\/$/, ""))
       .slice(0, 5);
 
-    // 3. Fetch those extra pages in parallel
     const additionalPages = await Promise.all(
       additionalUrls.map(async (pageUrl) => ({
         url: pageUrl,
@@ -185,6 +182,8 @@ export async function POST(request: Request) {
     const siteContext = allPages
       .map((p) => extractPageSummary(p.html, p.url))
       .join("\n");
+
+    const analyzedUrlsList = allPages.map((p) => p.url).join("\n- ");
 
     const sitemapNote =
       sitemapUrls.length > 0
@@ -203,6 +202,9 @@ WEBSITE: ${url}
 
 CRAWL NOTE: ${sitemapNote}
 
+PAGES ANALYZED (exact URLs — use these exact URLs in your "pages_analyzed" output, do not invent others):
+- ${analyzedUrlsList}
+
 SITE CONTENT (extracted from ${allPages.length} page(s)):
 ${siteContext.slice(0, 18000)}
 
@@ -210,25 +212,47 @@ ${siteContext.slice(0, 18000)}
 
 YOUR TASK
 
-Write a professional website audit report, structured as valid JSON, that reads like it was produced by a senior consultant who actually reviewed this specific site — not a template. Every issue and recommendation must reference something concrete you observed in the content above (an actual heading, an actual missing element, an actual pattern across pages) rather than a generic best practice.
+Write a comprehensive, professional website audit report, structured as valid JSON, that reads like a real paid consulting deliverable — long, thorough, and specific, not a quick summary. Every issue and recommendation must reference something concrete you observed in the content above rather than a generic best practice.
 
 TONE
-- Professional, direct, and confident — like a consultant delivering findings to a paying client, not a chatbot being encouraging.
-- No filler phrases ("in today's digital landscape", "it's important to note that"). Get straight to the finding and its business impact.
-- Where you can, connect a finding to its business consequence (lost trust, lost conversions, lost search visibility) rather than stating it as an abstract flaw.
+- Professional, direct, and confident — like a consultant delivering findings to a paying client.
+- No filler phrases. Get straight to the finding and its business impact.
+- Connect findings to business consequences (lost trust, lost conversions, lost search visibility) where possible.
 
-DEPTH
-- If multiple pages were analyzed, look for patterns and inconsistencies across pages (e.g. inconsistent messaging, duplicate title tags, missing meta descriptions site-wide, inconsistent CTAs) — this cross-page analysis is exactly what makes this audit worth paying for.
-- Cite specifics: reference actual heading text, actual page paths, or actual counts (e.g. "3 of the 4 pages reviewed are missing a meta description") wherever the source content supports it. Do not invent specifics that aren't supported by the content provided — if evidence is limited, say so plainly rather than fabricating detail.
+REPORT STRUCTURE
+- Write a genuine "introduction" section (4-6 sentences): what site was analyzed, how many pages were reviewed and how (sitemap-based crawl), what the overall approach was, and a preview of the overall verdict.
+- Write a "pages_analyzed" array: one entry per URL listed above, each with a 1-2 sentence "note" describing what that specific page is for and anything notable found on it.
+
+CATEGORY SCORES
+- Score each of the 6 categories (seo, ux, performance, accessibility, copywriting, conversion) from 0-100 independently. Be honest and differentiate — not everything should score the same.
+- The overall "score" should reasonably reflect the average weighted by how much each area affects business outcomes.
+
+DEPTH AND BREADTH — THIS IS THE MOST IMPORTANT PART
+- For each of the 6 categories, provide 4 distinct issues (not 2-3) where evidence supports it. Each issue should be a full sentence or two, not a fragment — explain what you found AND why it matters for the business.
+- For each category, also provide 3 distinct, concrete recommendation options — genuinely different approaches (a quick tactical fix, a more thorough structural fix, and a longer-term strategic improvement), each explained in 1-2 full sentences, not a short phrase.
+- If multiple pages were analyzed, look for cross-page patterns (inconsistent messaging, duplicate title tags, missing meta descriptions site-wide, inconsistent CTAs) and call these out explicitly as their own issues where relevant.
+- Cite specifics: reference actual heading text, actual page paths, or actual counts wherever the source content supports it. Do not invent specifics that aren't supported by the content provided — if evidence is limited, say so plainly.
+- This report will be sent as a long-form email document. Write with enough substance that each category section feels like a real consulting deliverable — favor thorough, well-explained findings over short bullet fragments.
+
+INDUSTRY BENCHMARKS
+- For each category, add a "benchmark" field: 1-2 sentences comparing this site's situation to well-established, general industry standards (e.g., Google's Core Web Vitals thresholds, typical conversion rate ranges for the site's apparent business type, common SEO best-practice baselines, WCAG accessibility standards).
+- Use only well-known, generally accepted benchmarks. Do not invent specific competitor names, specific competitor URLs, or specific competitor metrics you cannot know — frame this as general industry context, not a named comparison.
+- If you can reasonably infer the business type/vertical from the site content, use that to make the benchmark more specific (e.g., "For SaaS landing pages, typical conversion rates range from 3-5%; for a B2C e-commerce homepage, LCP under 2.5s is considered good by Google's standards").
 
 Return ONLY valid JSON, with no markdown code fences and no commentary outside the JSON. Use exactly this structure:
 
 {
   "score": 85,
 
+  "introduction": "4-6 sentence introduction to the report",
+
+  "pages_analyzed": [
+    { "url": "https://example.com", "note": "Homepage — 1-2 sentence note" }
+  ],
+
   "summary": {
     "headline": "One sharp, specific sentence capturing the single biggest opportunity on this site",
-    "description": "A 2-3 sentence executive summary a business owner would read first — what's working, what's costing them the most, and the overall verdict."
+    "description": "A 2-3 sentence executive summary — what's working, what's costing them the most, and the overall verdict."
   },
 
   "preview": {
@@ -237,42 +261,63 @@ Return ONLY valid JSON, with no markdown code fences and no commentary outside t
     "performance": "One specific, concrete performance finding (not generic)"
   },
 
+  "category_scores": {
+    "seo": 70,
+    "ux": 65,
+    "performance": 55,
+    "accessibility": 60,
+    "copywriting": 75,
+    "conversion": 62
+  },
+
   "seo": {
-    "issues": ["Specific issue referencing actual content/pages", "Specific issue 2"],
-    "recommendations": ["Concrete, actionable fix for issue 1", "Concrete, actionable fix for issue 2"]
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for SEO"
   },
 
   "ux": {
-    "issues": ["Specific issue referencing actual content/pages", "Specific issue 2"],
-    "recommendations": ["Concrete, actionable fix for issue 1", "Concrete, actionable fix for issue 2"]
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for UX"
   },
 
   "performance": {
-    "issues": ["Specific issue based on what could be observed", "Specific issue 2"],
-    "recommendations": ["Concrete, actionable fix for issue 1", "Concrete, actionable fix for issue 2"]
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for performance (e.g. Core Web Vitals)"
+  },
+
+  "accessibility": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for accessibility (e.g. WCAG)"
   },
 
   "conversion": {
-    "issues": ["Specific issue referencing actual CTAs/copy/flow observed", "Specific issue 2"],
-    "recommendations": ["Concrete, actionable fix for issue 1", "Concrete, actionable fix for issue 2"]
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for conversion rate for this type of site"
   },
 
   "copywriting": {
-    "issues": ["Specific issue referencing actual headlines/copy observed", "Specific issue 2"],
-    "recommendations": ["Concrete, actionable fix for issue 1", "Concrete, actionable fix for issue 2"]
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for copywriting/messaging clarity"
   },
 
   "priority_actions": [
-    { "priority": "high", "action": "The single highest-leverage fix, stated concretely" },
-    { "priority": "medium", "action": "The second most valuable fix" },
-    { "priority": "low", "action": "A worthwhile but non-urgent improvement" }
+    { "priority": "high", "action": "The single highest-leverage fix, stated concretely and explained in 1-2 sentences" },
+    { "priority": "medium", "action": "The second most valuable fix, explained in 1-2 sentences" },
+    { "priority": "low", "action": "A worthwhile but non-urgent improvement, explained in 1-2 sentences" }
   ]
 }
 
 RULES
-- Every "issues" entry must be traceable to something in the SITE CONTENT above, or clearly framed as an inference (e.g. "could not verify X — recommend manual check").
-- Never say "consider improving your SEO" or other vague filler — always say what, specifically, and why it matters.
-- If a section legitimately has very little to criticize, say so honestly rather than inventing a weak issue — credibility matters more than filling every field.
+- Every "issues" entry must be traceable to something in the SITE CONTENT above, or clearly framed as an inference.
+- Never say "consider improving your SEO" or similar vague filler — always say what, specifically, and why it matters, in full sentences.
+- category_scores must show real variation based on actual findings.
+- Never state a specific competitor's name, URL, or metrics as fact — only general, well-established industry benchmarks.
 - Return JSON only.
       `,
     });
@@ -286,6 +331,14 @@ RULES
       .trim();
 
     const audit = JSON.parse(cleanedOutput);
+
+    // Varnostna mreža: če model izpusti pages_analyzed, ga zgradimo sami iz dejanskih crawlanih strani
+    if (!Array.isArray(audit.pages_analyzed) || audit.pages_analyzed.length === 0) {
+      audit.pages_analyzed = allPages.map((p) => ({
+        url: p.url,
+        note: "Page analyzed as part of this audit.",
+      }));
+    }
 
     console.log("NEW AUDIT:", audit);
 

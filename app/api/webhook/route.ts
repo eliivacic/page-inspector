@@ -1,493 +1,380 @@
-import Stripe from "stripe";
-import { Resend } from "resend";
-import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export const maxDuration = 60;
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const resend = new Resend(process.env.RESEND_API_KEY);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-const ownerEmail = process.env.OWNER_EMAIL;
-
-// ---------- Design tokens ----------
-
-const INK = "#18151A";
-const SOFT = "#5B5560";
-const LILAC = "#8B6FD9";
-const LILAC_LIGHT = "#E7DBFA";
-const MINT = "#1E6B48";
-const MINT_BG = "#B9EBD3";
-const AMBER = "#8A6800";
-const AMBER_BG = "#FFF1BE";
-const CORAL = "#9C2E1B";
-const CORAL_BG = "#FFDAD1";
-const BORDER = "#EAE6DF";
-const BG = "#F8F6F1";
-
-function scoreColor(score: number) {
-  if (score >= 75) return MINT;
-  if (score >= 50) return AMBER;
-  return CORAL;
-}
-
-function scoreBg(score: number) {
-  if (score >= 75) return MINT_BG;
-  if (score >= 50) return AMBER_BG;
-  return CORAL_BG;
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  seo: "SEO",
-  ux: "User Experience",
-  performance: "Performance",
-  accessibility: "Accessibility",
-  copywriting: "Copywriting",
-  conversion: "Conversion",
+const BOT_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (compatible; PageInspectorBot/1.0; +https://www.page-inspector.com)",
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  seo: "🔎",
-  ux: "🧭",
-  performance: "⚡",
-  accessibility: "♿",
-  copywriting: "✍️",
-  conversion: "🎯",
-};
-
-// ---------- Email section builders ----------
-
-function categoryScorecard(categoryScores: Record<string, number>) {
-  const rows = Object.keys(CATEGORY_LABELS)
-    .filter((key) => typeof categoryScores?.[key] === "number")
-    .map((key) => {
-      const value = categoryScores[key];
-      const color = scoreColor(value);
-
-      return `
-      <tr>
-        <td style="padding:6px 0;font-size:13px;font-weight:600;color:${INK};width:150px;">
-          ${CATEGORY_LABELS[key]}
-        </td>
-        <td style="padding:6px 0;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="background:${BORDER};border-radius:6px;height:8px;">
-                <div style="background:${color};width:${value}%;height:8px;border-radius:6px;"></div>
-              </td>
-            </tr>
-          </table>
-        </td>
-        <td style="padding:6px 0 6px 12px;font-size:13px;font-weight:700;color:${color};width:36px;text-align:right;">
-          ${value}
-        </td>
-      </tr>`;
-    })
-    .join("");
-
-  if (!rows) return "";
-
-  return `
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;background:${BG};border:1.5px solid ${BORDER};border-radius:14px;">
-    <tr>
-      <td style="padding:20px 22px;">
-        <p style="margin:0 0 12px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
-          Score by category
-        </p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${rows}
-        </table>
-      </td>
-    </tr>
-  </table>`;
-}
-
-function pagesAnalyzedSection(pages: { url: string; note?: string }[]) {
-  if (!Array.isArray(pages) || pages.length === 0) return "";
-
-  const rows = pages
-    .map(
-      (p) => `
-    <div style="margin:0 0 12px 0;">
-      <p style="margin:0 0 3px 0;font-size:12.5px;font-weight:700;color:${LILAC};word-break:break-all;">
-        ${p.url}
-      </p>
-      ${
-        p.note
-          ? `<p style="margin:0;font-size:13px;line-height:1.5;color:${SOFT};">${p.note}</p>`
-          : ""
-      }
-    </div>`
-    )
-    .join("");
-
-  return `
-  <tr>
-    <td style="padding:0 36px 8px 36px;">
-      <h2 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:${INK};">
-        Pages analyzed
-      </h2>
-      ${rows}
-    </td>
-  </tr>`;
-}
-
-function issuesList(items: string[] = []) {
-  if (!items.length) return "";
-  return `
-    <ol style="margin:0 0 14px 0;padding:0 0 0 20px;">
-      ${items
-        .map(
-          (item) => `
-        <li style="margin:0 0 8px 0;font-size:14px;line-height:1.55;color:${INK};">
-          ${item}
-        </li>`
-        )
-        .join("")}
-    </ol>`;
-}
-
-function recommendationsList(items: string[] = []) {
-  if (!items.length) return "";
-  return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px 0;">
-      <tr>
-        <td style="background:${MINT_BG};border-radius:10px;padding:14px 16px;">
-          <p style="margin:0 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${MINT};">
-            Options to fix this
-          </p>
-          <ul style="margin:0;padding:0 0 0 18px;">
-            ${items
-              .map(
-                (item, i) => `
-              <li style="margin:0 0 8px 0;font-size:13.5px;line-height:1.5;color:${INK};">
-                <strong>Option ${String.fromCharCode(65 + i)}: </strong>${item}
-              </li>`
-              )
-              .join("")}
-          </ul>
-        </td>
-      </tr>
-    </table>`;
-}
-
-function categorySection(
-  key: string,
-  category?: { issues: string[]; recommendations: string[] },
-  score?: number
-) {
-  if (!category) return "";
-
-  const badge =
-    typeof score === "number"
-      ? `<span style="display:inline-block;background:${scoreBg(score)};color:${scoreColor(score)};font-size:12px;font-weight:700;padding:2px 10px;border-radius:100px;margin-left:8px;">${score}/100</span>`
-      : "";
-
-  return `
-  <tr>
-    <td style="padding:0 36px 28px 36px;">
-      <h2 style="margin:0 0 14px 0;font-size:18px;font-weight:700;color:${INK};">
-        ${CATEGORY_ICONS[key] || ""} ${CATEGORY_LABELS[key]}${badge}
-      </h2>
-      <p style="margin:0 0 8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
-        Issues found
-      </p>
-      ${issuesList(category.issues)}
-      ${recommendationsList(category.recommendations)}
-    </td>
-  </tr>
-  <tr><td style="padding:0 36px;"><div style="border-top:1px solid ${BORDER};"></div></td></tr>`;
-}
-
-function priorityBadge(priority: string) {
-  const map: Record<string, { bg: string; fg: string; label: string }> = {
-    high: { bg: CORAL_BG, fg: CORAL, label: "High priority" },
-    medium: { bg: AMBER_BG, fg: AMBER, label: "Medium priority" },
-    low: { bg: MINT_BG, fg: MINT, label: "Low priority" },
-  };
-
-  const style = map[priority?.toLowerCase()] || map.medium;
-
-  return `<span style="display:inline-block;background:${style.bg};color:${style.fg};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:3px 10px;border-radius:100px;white-space:nowrap;">${style.label}</span>`;
-}
-
-// ---------- Full report email ----------
-
-function buildReportEmailHtml(audit: { score: number; report: any; website: string }) {
-  const r = audit.report;
-  const cs = r.category_scores || {};
-
-  return `
-<div style="background:${BG};padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1.5px solid ${INK};">
-
-    <!-- Header -->
-    <tr>
-      <td style="background:${INK};padding:32px 36px;">
-        <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${LILAC_LIGHT};">
-          Page Inspector
-        </p>
-        <h1 style="margin:0;font-size:24px;font-weight:700;color:#ffffff;">
-          Your website audit report
-        </h1>
-        <p style="margin:8px 0 0 0;font-size:13.5px;color:rgba(255,255,255,0.65);word-break:break-all;">
-          ${audit.website}
-        </p>
-      </td>
-    </tr>
-
-    <!-- Score + summary -->
-    <tr>
-      <td style="padding:32px 36px 8px 36px;">
-        <table role="presentation" cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="width:88px;height:88px;border-radius:50%;background:${LILAC_LIGHT};border:2px solid ${INK};text-align:center;vertical-align:middle;">
-              <span style="font-size:28px;font-weight:700;color:${INK};">${audit.score}</span>
-            </td>
-            <td style="padding-left:20px;">
-              <p style="margin:0 0 4px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:${SOFT};">
-                Overall score / 100
-              </p>
-              <p style="margin:0;font-size:15px;font-weight:600;color:${INK};max-width:380px;">
-                ${r.summary?.headline || ""}
-              </p>
-            </td>
-          </tr>
-        </table>
-
-        <p style="margin:24px 0 0 0;font-size:14.5px;line-height:1.6;color:${SOFT};">
-          ${r.summary?.description || ""}
-        </p>
-
-        ${categoryScorecard(cs)}
-      </td>
-    </tr>
-
-    <!-- Introduction -->
-    <tr><td style="padding:28px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
-    <tr>
-      <td style="padding:28px 36px 8px 36px;">
-        <h2 style="margin:0 0 12px 0;font-size:16px;font-weight:700;color:${INK};">
-          Introduction
-        </h2>
-        <p style="margin:0;font-size:14px;line-height:1.65;color:${INK};">
-          ${r.introduction || ""}
-        </p>
-      </td>
-    </tr>
-
-    <!-- Pages analyzed -->
-    <tr><td style="padding:8px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
-    ${pagesAnalyzedSection(r.pages_analyzed)}
-
-    <!-- Categories -->
-    <tr><td style="padding:8px 36px 0 36px;"><div style="border-top:1.5px solid ${BORDER};"></div></td></tr>
-    <tr>
-      <td style="padding:28px 36px 8px 36px;">
-        <h2 style="margin:0;font-size:18px;font-weight:700;color:${INK};">
-          Detailed findings
-        </h2>
-      </td>
-    </tr>
-    ${categorySection("seo", r.seo, cs.seo)}
-    ${categorySection("ux", r.ux, cs.ux)}
-    ${categorySection("performance", r.performance, cs.performance)}
-    ${categorySection("accessibility", r.accessibility, cs.accessibility)}
-    ${categorySection("conversion", r.conversion, cs.conversion)}
-    ${categorySection("copywriting", r.copywriting, cs.copywriting)}
-
-    <!-- Priority actions -->
-    <tr>
-      <td style="padding:8px 36px 32px 36px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};border-radius:14px;border:1.5px solid ${BORDER};">
-          <tr>
-            <td style="padding:22px 24px;">
-              <h2 style="margin:0 0 16px 0;font-size:16px;font-weight:700;color:${INK};">
-                Priority actions
-              </h2>
-              ${(r.priority_actions || [])
-                .map(
-                  (item: { priority: string; action: string }, i: number) => `
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:${i === r.priority_actions.length - 1 ? "0" : "12px"};">
-                  <tr>
-                    <td style="width:130px;vertical-align:top;padding-top:1px;">
-                      ${priorityBadge(item.priority)}
-                    </td>
-                    <td style="font-size:14px;line-height:1.5;color:${INK};">
-                      ${item.action}
-                    </td>
-                  </tr>
-                </table>`
-                )
-                .join("")}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="padding:0 36px 32px 36px;">
-        <div style="border-top:1.5px solid ${BORDER};padding-top:20px;">
-          <p style="margin:0;font-size:13px;color:${SOFT};">
-            Thanks for using Page Inspector. Questions about this report?
-            Reply to this email and we'll take a look.
-          </p>
-        </div>
-      </td>
-    </tr>
-  </table>
-
-  <p style="text-align:center;font-size:12px;color:${SOFT};margin:20px 0 0 0;">
-    © 2026 Page Inspector
-  </p>
-</div>`;
-}
-
-// ---------- Owner notification email ----------
-
-function buildOwnerNotificationHtml(audit: {
-  score: number;
-  website: string;
-  email: string;
-}) {
-  return `
-<div style="background:${BG};padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1.5px solid ${INK};">
-    <tr>
-      <td style="background:${MINT};padding:24px 32px;">
-        <p style="margin:0;font-size:13px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#ffffff;">
-          💰 New sale
-        </p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:28px 32px;">
-        <h1 style="margin:0 0 18px 0;font-size:20px;font-weight:700;color:${INK};">
-          Someone just bought a full report
-        </h1>
-
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-          <tr>
-            <td style="padding:6px 0;color:${SOFT};width:110px;">Website</td>
-            <td style="padding:6px 0;color:${INK};font-weight:600;word-break:break-all;">${audit.website}</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 0;color:${SOFT};">Customer email</td>
-            <td style="padding:6px 0;color:${INK};font-weight:600;word-break:break-all;">${audit.email}</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 0;color:${SOFT};">Score</td>
-            <td style="padding:6px 0;color:${INK};font-weight:600;">${audit.score}/100</td>
-          </tr>
-          <tr>
-            <td style="padding:6px 0;color:${SOFT};">Amount</td>
-            <td style="padding:6px 0;color:${INK};font-weight:600;">€8.00</td>
-          </tr>
-        </table>
-
-        <p style="margin:20px 0 0 0;font-size:13px;color:${SOFT};">
-          The full report has already been sent to the customer automatically.
-        </p>
-      </td>
-    </tr>
-  </table>
-</div>`;
-}
-
-// ---------- Webhook handler ----------
-
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const signature = req.headers.get("stripe-signature");
-
-  if (!signature) {
-    return NextResponse.json({ error: "Missing Stripe signature" }, { status: 400 });
-  }
-
-  let event: Stripe.Event;
-
+async function fetchText(url: string, timeoutMs = 8000): Promise<string> {
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err) {
-    console.error("Webhook verification failed:", err);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-  }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-  console.log("✅ Stripe event:", event.type);
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-
-    const email = session.customer_details?.email || session.customer_email;
-    const auditId = session.metadata?.auditId;
-
-    if (!email || !auditId) {
-      console.error("Missing email or auditId");
-      return NextResponse.json({ error: "Missing checkout data" }, { status: 400 });
-    }
-
-    const { data: audit, error } = await supabase
-      .from("audits")
-      .select("*")
-      .eq("id", auditId)
-      .single();
-
-    if (error || !audit) {
-      console.error("Audit not found:", error);
-      return NextResponse.json({ error: "Audit not found" }, { status: 404 });
-    }
-
-    if (audit.paid) {
-      console.log("Audit already marked as paid, skipping duplicate email.");
-      return NextResponse.json({ received: true, duplicate: true });
-    }
-
-    const { error: emailError } = await resend.emails.send({
-      from: "PageInspector <reports@page-inspector.com>",
-      to: email,
-      subject: "Your PageInspector Website Audit Report",
-      html: buildReportEmailHtml(audit),
+    const res = await fetch(url, {
+      headers: BOT_HEADERS,
+      signal: controller.signal,
     });
 
-    if (emailError) {
-      console.error("Resend error:", emailError);
-      return NextResponse.json({ error: "Email could not be sent" }, { status: 500 });
-    }
+    clearTimeout(timeout);
 
-    console.log("✅ Report sent to:", email);
+    if (!res.ok) return "";
+    return await res.text();
+  } catch {
+    return "";
+  }
+}
 
-    if (ownerEmail) {
-      try {
-        await resend.emails.send({
-          from: "PageInspector <reports@page-inspector.com>",
-          to: ownerEmail,
-          subject: `💰 New sale: ${audit.website}`,
-          html: buildOwnerNotificationHtml({
-            score: audit.score,
-            website: audit.website,
-            email,
-          }),
-        });
-        console.log("✅ Owner notified of sale");
-      } catch (ownerEmailError) {
-        console.error("Could not send owner notification:", ownerEmailError);
+function extractSitemapUrls(xml: string): string[] {
+  return [...xml.matchAll(/<loc>(.*?)<\/loc>/gi)]
+    .map((m) => m[1].trim())
+    .filter(Boolean);
+}
+
+async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
+  let origin: string;
+
+  try {
+    origin = new URL(baseUrl).origin;
+  } catch {
+    return [];
+  }
+
+  const robots = await fetchText(`${origin}/robots.txt`);
+  const sitemapMatch = robots.match(/Sitemap:\s*(\S+)/i);
+
+  const candidates = [
+    sitemapMatch?.[1],
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap_index.xml`,
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    const xml = await fetchText(candidate);
+
+    if (xml && xml.includes("<loc>")) {
+      let urls = extractSitemapUrls(xml);
+
+      if (xml.includes("<sitemapindex")) {
+        const nested: string[] = [];
+
+        for (const subSitemap of urls.slice(0, 3)) {
+          const subXml = await fetchText(subSitemap);
+          nested.push(...extractSitemapUrls(subXml));
+        }
+
+        urls = nested;
       }
-    } else {
-      console.log("OWNER_EMAIL not set, skipping owner notification.");
-    }
 
-    const { error: updateError } = await supabase
-      .from("audits")
-      .update({ paid: true, email })
-      .eq("id", auditId);
-
-    if (updateError) {
-      console.error("Could not mark audit as paid:", updateError);
+      return urls;
     }
   }
 
-  return NextResponse.json({ received: true });
+  return [];
+}
+
+function extractPageSummary(html: string, url: string): string {
+  if (!html) {
+    return `\n--- PAGE: ${url} ---\n(Could not be fetched — may block bots or require JavaScript.)\n`;
+  }
+
+  const title =
+    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "(none)";
+
+  const metaDescription =
+    html.match(
+      /<meta\s+[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i
+    )?.[1]?.trim() ||
+    html.match(
+      /<meta\s+[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["']/i
+    )?.[1]?.trim() ||
+    "(none)";
+
+  const h1s = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)]
+    .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const h2s = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)]
+    .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const imgCount = (html.match(/<img\b/gi) || []).length;
+  const imgWithoutAlt = (html.match(/<img\b(?![^>]*\balt=)[^>]*>/gi) || []).length;
+
+  const bodyText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 1200);
+
+  return `
+--- PAGE: ${url} ---
+Title tag: ${title}
+Meta description: ${metaDescription}
+H1 headings: ${h1s.join(" | ") || "(none found)"}
+H2 headings: ${h2s.join(" | ") || "(none found)"}
+Images: ${imgCount} total, ${imgWithoutAlt} missing alt text
+Visible text sample: ${bodyText}
+`;
+}
+
+export async function POST(request: Request) {
+  try {
+    const { url } = await request.json();
+
+    if (!url) {
+      return NextResponse.json(
+        { error: "Website URL is required." },
+        { status: 400 }
+      );
+    }
+
+    let origin: string;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      return NextResponse.json(
+        { error: "Please enter a valid URL, including https://" },
+        { status: 400 }
+      );
+    }
+
+    const homepageHtml = await fetchText(url);
+    const sitemapUrls = await discoverSitemapUrls(url);
+
+    const additionalUrls = sitemapUrls
+      .filter((u) => {
+        try {
+          const parsed = new URL(u);
+          return (
+            parsed.origin === origin &&
+            !/\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|xml)$/i.test(parsed.pathname)
+          );
+        } catch {
+          return false;
+        }
+      })
+      .filter((u) => u.replace(/\/$/, "") !== url.replace(/\/$/, ""))
+      .slice(0, 5);
+
+    const additionalPages = await Promise.all(
+      additionalUrls.map(async (pageUrl) => ({
+        url: pageUrl,
+        html: await fetchText(pageUrl),
+      }))
+    );
+
+    const allPages = [{ url, html: homepageHtml }, ...additionalPages].filter(
+      (p) => p.html
+    );
+
+    const siteContext = allPages
+      .map((p) => extractPageSummary(p.html, p.url))
+      .join("\n");
+
+    const analyzedUrlsList = allPages.map((p) => p.url).join("\n- ");
+
+    const sitemapNote =
+      sitemapUrls.length > 0
+        ? `A sitemap was found with ${sitemapUrls.length} known URLs. ${allPages.length} page(s) were fetched and analyzed in depth (homepage plus the most relevant additional pages).`
+        : `No sitemap was found for this domain. Only the homepage could be analyzed — note this as a limitation and, if relevant, flag the missing sitemap as an SEO issue.`;
+
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+
+      input: `
+You are a senior website conversion rate optimization consultant with 15+ years of experience auditing websites for funded startups and established e-commerce brands. You charge $500/hour for audits like this one. Clients pay you specifically because your findings are precise, evidence-based, and immediately actionable — never generic advice that could apply to any website.
+
+You have just crawled the following website using its sitemap to understand its full structure, not just the homepage.
+
+WEBSITE: ${url}
+
+CRAWL NOTE: ${sitemapNote}
+
+PAGES ANALYZED (exact URLs — use these exact URLs in your "pages_analyzed" output, do not invent others):
+- ${analyzedUrlsList}
+
+SITE CONTENT (extracted from ${allPages.length} page(s)):
+${siteContext.slice(0, 18000)}
+
+---
+
+YOUR TASK
+
+Write a comprehensive, professional website audit report, structured as valid JSON, that reads like a real paid consulting deliverable — long, thorough, and specific, not a quick summary. Every issue and recommendation must reference something concrete you observed in the content above rather than a generic best practice.
+
+TONE
+- Professional, direct, and confident — like a consultant delivering findings to a paying client.
+- No filler phrases. Get straight to the finding and its business impact.
+- Connect findings to business consequences (lost trust, lost conversions, lost search visibility) where possible.
+
+REPORT STRUCTURE
+- Write a genuine "introduction" section (4-6 sentences): what site was analyzed, how many pages were reviewed and how (sitemap-based crawl), what the overall approach was, and a preview of the overall verdict.
+- Write a "pages_analyzed" array: one entry per URL listed above, each with a 1-2 sentence "note" describing what that specific page is for and anything notable found on it.
+
+CATEGORY SCORES
+- Score each of the 6 categories (seo, ux, performance, accessibility, copywriting, conversion) from 0-100 independently. Be honest and differentiate — not everything should score the same.
+- The overall "score" should reasonably reflect the average weighted by how much each area affects business outcomes.
+
+DEPTH AND BREADTH — THIS IS THE MOST IMPORTANT PART
+- For each of the 6 categories, provide 4 distinct issues (not 2-3) where evidence supports it. Each issue should be a full sentence or two, not a fragment — explain what you found AND why it matters for the business.
+- For each category, also provide 3 distinct, concrete recommendation options — genuinely different approaches (a quick tactical fix, a more thorough structural fix, and a longer-term strategic improvement), each explained in 1-2 full sentences, not a short phrase.
+- If multiple pages were analyzed, look for cross-page patterns (inconsistent messaging, duplicate title tags, missing meta descriptions site-wide, inconsistent CTAs) and call these out explicitly as their own issues where relevant.
+- Cite specifics: reference actual heading text, actual page paths, or actual counts wherever the source content supports it. Do not invent specifics that aren't supported by the content provided — if evidence is limited, say so plainly.
+- This report will be sent as a long-form email document. Write with enough substance that each category section feels like a real consulting deliverable — favor thorough, well-explained findings over short bullet fragments.
+
+INDUSTRY BENCHMARKS
+- For each category, add a "benchmark" field: 1-2 sentences comparing this site's situation to well-established, general industry standards (e.g., Google's Core Web Vitals thresholds, typical conversion rate ranges for the site's apparent business type, common SEO best-practice baselines, WCAG accessibility standards).
+- Use only well-known, generally accepted benchmarks. Do not invent specific competitor names, specific competitor URLs, or specific competitor metrics you cannot know — frame this as general industry context, not a named comparison.
+- If you can reasonably infer the business type/vertical from the site content, use that to make the benchmark more specific (e.g., "For SaaS landing pages, typical conversion rates range from 3-5%; for a B2C e-commerce homepage, LCP under 2.5s is considered good by Google's standards").
+
+Return ONLY valid JSON, with no markdown code fences and no commentary outside the JSON. Use exactly this structure:
+
+{
+  "score": 85,
+
+  "introduction": "4-6 sentence introduction to the report",
+
+  "pages_analyzed": [
+    { "url": "https://example.com", "note": "Homepage — 1-2 sentence note" }
+  ],
+
+  "summary": {
+    "headline": "One sharp, specific sentence capturing the single biggest opportunity on this site",
+    "description": "A 2-3 sentence executive summary — what's working, what's costing them the most, and the overall verdict."
+  },
+
+  "preview": {
+    "seo": "One specific, concrete SEO finding (not generic)",
+    "ux": "One specific, concrete UX finding (not generic)",
+    "performance": "One specific, concrete performance finding (not generic)"
+  },
+
+  "category_scores": {
+    "seo": 70,
+    "ux": 65,
+    "performance": 55,
+    "accessibility": 60,
+    "copywriting": 75,
+    "conversion": 62
+  },
+
+  "seo": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for SEO"
+  },
+
+  "ux": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for UX"
+  },
+
+  "performance": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for performance (e.g. Core Web Vitals)"
+  },
+
+  "accessibility": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for accessibility (e.g. WCAG)"
+  },
+
+  "conversion": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for conversion rate for this type of site"
+  },
+
+  "copywriting": {
+    "issues": ["Full sentence issue 1", "Full sentence issue 2", "Full sentence issue 3", "Full sentence issue 4"],
+    "recommendations": ["Full sentence option A", "Full sentence option B", "Full sentence option C"],
+    "benchmark": "1-2 sentence comparison to general industry standards for copywriting/messaging clarity"
+  },
+
+  "priority_actions": [
+    { "priority": "high", "action": "The single highest-leverage fix, stated concretely and explained in 1-2 sentences" },
+    { "priority": "medium", "action": "The second most valuable fix, explained in 1-2 sentences" },
+    { "priority": "low", "action": "A worthwhile but non-urgent improvement, explained in 1-2 sentences" }
+  ]
+}
+
+RULES
+- Every "issues" entry must be traceable to something in the SITE CONTENT above, or clearly framed as an inference.
+- Never say "consider improving your SEO" or similar vague filler — always say what, specifically, and why it matters, in full sentences.
+- category_scores must show real variation based on actual findings.
+- Never state a specific competitor's name, URL, or metrics as fact — only general, well-established industry benchmarks.
+- Return JSON only.
+      `,
+    });
+
+    console.log("OPENAI RESPONSE:", response.output_text);
+
+    const cleanedOutput = response.output_text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    const audit = JSON.parse(cleanedOutput);
+
+    // Varnostna mreža: če model izpusti pages_analyzed, ga zgradimo sami iz dejanskih crawlanih strani
+    if (!Array.isArray(audit.pages_analyzed) || audit.pages_analyzed.length === 0) {
+      audit.pages_analyzed = allPages.map((p) => ({
+        url: p.url,
+        note: "Page analyzed as part of this audit.",
+      }));
+    }
+
+    console.log("NEW AUDIT:", audit);
+
+    const { data, error } = await supabase
+      .from("audits")
+      .insert({
+        website: url,
+        score: audit.score,
+        report: audit,
+        paid: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase error:", error);
+
+      return NextResponse.json(
+        { error: "Could not save audit." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      auditId: data.id,
+      website: url,
+      score: audit.score,
+      preview: audit.preview,
+    });
+  } catch (error) {
+    console.error("Analyze error:", error);
+
+    return NextResponse.json(
+      { error: "The website could not be analyzed." },
+      { status: 500 }
+    );
+  }
 }
