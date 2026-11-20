@@ -80,52 +80,93 @@ async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
   return [];
 }
 
-function extractPageSummary(html: string, url: string): string {
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+function stripTags(fragment: string): string {
+  return decodeEntities(fragment.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+function metaContent(html: string, attr: "name" | "property", key: string): string {
+  const re1 = new RegExp(`<meta\\s+[^>]*${attr}=["']${key}["'][^>]*content=["']([\\s\\S]*?)["']`, "i");
+  const re2 = new RegExp(`<meta\\s+[^>]*content=["']([\\s\\S]*?)["'][^>]*${attr}=["']${key}["']`, "i");
+  return html.match(re1)?.[1]?.trim() || html.match(re2)?.[1]?.trim() || "";
+}
+
+function extractPageSummary(html: string, url: string, textLimit: number): string {
   if (!html) {
     return `\n--- PAGE: ${url} ---\n(Could not be fetched — may block bots or require JavaScript.)\n`;
   }
 
-  const title =
-    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "(none)";
+  const title = decodeEntities(
+    html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "(none)"
+  );
+  const metaDescription = decodeEntities(metaContent(html, "name", "description") || "(none)");
 
-  const metaDescription =
-    html.match(
-      /<meta\s+[^>]*name=["']description["'][^>]*content=["']([\s\S]*?)["']/i
-    )?.[1]?.trim() ||
-    html.match(
-      /<meta\s+[^>]*content=["']([\s\S]*?)["'][^>]*name=["']description["']/i
-    )?.[1]?.trim() ||
-    "(none)";
+  const headings = (tag: string, max: number) =>
+    [...html.matchAll(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "gi"))]
+      .map((m) => stripTags(m[1]))
+      .filter(Boolean)
+      .slice(0, max);
 
-  const h1s = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)]
-    .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
-    .filter(Boolean)
-    .slice(0, 3);
+  const h1s = headings("h1", 3);
+  const h2s = headings("h2", 12);
+  const h3s = headings("h3", 12);
 
-  const h2s = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/gi)]
-    .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
-    .filter(Boolean)
-    .slice(0, 6);
+  const imgTags = html.match(/<img\b[^>]*>/gi) || [];
+  const imgWithoutAlt = imgTags.filter((t) => !/\balt=/i.test(t)).length;
+  const lazyImages = imgTags.filter((t) => /loading=["']lazy["']/i.test(t)).length;
 
-  const imgCount = (html.match(/<img\b/gi) || []).length;
-  const imgWithoutAlt = (html.match(/<img\b(?![^>]*\balt=)[^>]*>/gi) || []).length;
+  const ctas = [...html.matchAll(/<(button|a)\b[^>]*>([\s\S]*?)<\/\1>/gi)]
+    .map((m) => stripTags(m[2]))
+    .filter((t) => t && t.length <= 40);
+  const uniqueCtas = [...new Set(ctas)].slice(0, 20);
 
-  const bodyText = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 1200);
+  const internalLinks = (html.match(/<a\b[^>]*href=["'](\/|#|https?:\/\/[^"']*)/gi) || []).length;
+  const forms = (html.match(/<form\b/gi) || []).length;
+  const inputs = (html.match(/<input\b/gi) || []).length;
+  const labels = (html.match(/<label\b/gi) || []).length;
+  const scripts = (html.match(/<script\b/gi) || []).length;
+  const stylesheets = (html.match(/<link\b[^>]*rel=["']stylesheet["']/gi) || []).length;
+
+  const lang = html.match(/<html[^>]*\blang=["']([^"']+)["']/i)?.[1] || "(missing)";
+  const canonical = html.match(/<link\s+[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)?.[1] || "(none)";
+  const robots = metaContent(html, "name", "robots") || "(none)";
+  const viewport = metaContent(html, "name", "viewport") ? "present" : "MISSING";
+  const ogTitle = metaContent(html, "property", "og:title") ? "present" : "missing";
+  const ogImage = metaContent(html, "property", "og:image") ? "present" : "missing";
+  const structuredData = [...html.matchAll(/"@type"\s*:\s*"([^"]+)"/g)].map((m) => m[1]);
+
+  const bodyText = stripTags(
+    html
+      .replace(/<head[\s\S]*?<\/head>/i, " ")
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+  );
 
   return `
 --- PAGE: ${url} ---
-Title tag: ${title}
+Title tag: ${title} (${title.length} chars)
 Meta description: ${metaDescription}
+Language attribute: ${lang} · Canonical: ${canonical} · Meta robots: ${robots} · Viewport meta: ${viewport}
+Open Graph: title ${ogTitle}, image ${ogImage} · Structured data types: ${[...new Set(structuredData)].join(", ") || "(none)"}
 H1 headings: ${h1s.join(" | ") || "(none found)"}
 H2 headings: ${h2s.join(" | ") || "(none found)"}
-Images: ${imgCount} total, ${imgWithoutAlt} missing alt text
-Visible text sample: ${bodyText}
+H3 headings: ${h3s.join(" | ") || "(none found)"}
+Buttons and link labels: ${uniqueCtas.join(" | ") || "(none found)"}
+Images: ${imgTags.length} total, ${imgWithoutAlt} missing alt text, ${lazyImages} lazy-loaded
+Links: ${internalLinks} · Forms: ${forms} (${inputs} inputs, ${labels} labels) · Scripts: ${scripts} · Stylesheets: ${stylesheets}
+HTML size: ${Math.round(html.length / 1024)} KB
+Visible text${bodyText.length > textLimit ? ` (first ${textLimit} of ${bodyText.length} characters)` : ""}: ${bodyText.slice(0, textLimit)}
 `;
 }
 
@@ -180,7 +221,8 @@ export async function POST(request: Request) {
     );
 
     const siteContext = allPages
-      .map((p) => extractPageSummary(p.html, p.url))
+      // The homepage gets the most room; it is where most conversion issues live
+      .map((p, i) => extractPageSummary(p.html, p.url, i === 0 ? 9000 : 3500))
       .join("\n");
 
     const analyzedUrlsList = allPages.map((p) => p.url).join("\n- ");
@@ -203,7 +245,7 @@ PAGES ANALYZED (exact URLs — use these exact URLs in your "pages_analyzed" out
 - ${analyzedUrlsList}
 
 SITE CONTENT (extracted from ${allPages.length} page(s)):
-${siteContext.slice(0, 18000)}
+${siteContext.slice(0, 45000)}
 
 ---
 
