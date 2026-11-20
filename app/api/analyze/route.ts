@@ -1,13 +1,12 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 // Long-form reports regularly take over a minute to generate
 export const maxDuration = 300;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Reads ANTHROPIC_API_KEY from the environment
+const anthropic = new Anthropic();
 
 const BOT_HEADERS = {
   "User-Agent":
@@ -191,11 +190,7 @@ export async function POST(request: Request) {
         ? `A sitemap was found with ${sitemapUrls.length} known URLs. ${allPages.length} page(s) were fetched and analyzed in depth (homepage plus the most relevant additional pages).`
         : `No sitemap was found for this domain. Only the homepage could be analyzed — note this as a limitation and, if relevant, flag the missing sitemap as an SEO issue.`;
 
-    const response = await openai.responses.create({
-      model: "gpt-4.1-mini",
-      text: { format: { type: "json_object" } },
-
-      input: `
+    const prompt = `
 You are a senior website conversion rate optimization consultant with 15+ years of experience auditing websites for funded startups and established e-commerce brands. You charge $500/hour for audits like this one. Clients pay you specifically because your findings are precise, evidence-based, and immediately actionable — never generic advice that could apply to any website.
 
 You have just crawled the following website using its sitemap to understand its full structure, not just the homepage.
@@ -321,18 +316,40 @@ RULES
 - category_scores must show real variation based on actual findings.
 - Never state a specific competitor's name, URL, or metrics as fact — only general, well-established industry benchmarks.
 - Return JSON only.
-      `,
-    });
+      `;
 
-    console.log("OPENAI RESPONSE:", response.output_text);
+    // Streaming keeps the long report clear of HTTP timeouts; fallbacks re-run a
+    // safety-declined request on Anthropic's recommended fallback model.
+    const message = await anthropic.beta.messages
+      .stream({
+        model: "claude-opus-5",
+        max_tokens: 32000,
+        // Low effort keeps the free preview fast (full effort took ~3 min)
+        output_config: { effort: "low" },
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        messages: [{ role: "user", content: prompt }],
+      })
+      .finalMessage();
 
-    const cleanedOutput = response.output_text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+    if (message.stop_reason === "refusal" || message.stop_reason === "max_tokens") {
+      throw new Error(`Model stopped early: ${message.stop_reason}`);
+    }
 
-    const audit = JSON.parse(cleanedOutput);
+    const outputText = message.content
+      .map((block) => (block.type === "text" ? block.text : ""))
+      .join("");
+
+    console.log("CLAUDE RESPONSE:", outputText);
+
+    // Tolerate stray prose or code fences around the JSON object
+    const jsonStart = outputText.indexOf("{");
+    const jsonEnd = outputText.lastIndexOf("}");
+    if (jsonStart === -1 || jsonEnd <= jsonStart) {
+      throw new Error("Model response contained no JSON object");
+    }
+
+    const audit = JSON.parse(outputText.slice(jsonStart, jsonEnd + 1));
 
     // Varnostna mreža: če model izpusti pages_analyzed, ga zgradimo sami iz dejanskih crawlanih strani
     if (!Array.isArray(audit.pages_analyzed) || audit.pages_analyzed.length === 0) {

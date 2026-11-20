@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { renderReportPdf } from "@/lib/reportPdf";
+import { renderReportPdf, stripOptionLabel } from "@/lib/reportPdf";
 
 export const maxDuration = 120;
 
@@ -164,7 +164,7 @@ function recommendationsList(items: string[] = []) {
               .map(
                 (item, i) => `
               <li style="margin:0 0 8px 0;font-size:13.5px;line-height:1.5;color:${INK};">
-                <strong>Option ${String.fromCharCode(65 + i)}: </strong>${item}
+                <strong>${["Quick fix", "Structural fix", "Long-term"][i] || `Option ${String.fromCharCode(65 + i)}`}: </strong>${stripOptionLabel(item)}
               </li>`
               )
               .join("")}

@@ -15,7 +15,7 @@ const description =
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.page-inspector.com"),
   title: {
-    default: "Page Inspector — AI website audit in under 60 seconds",
+    default: "Page Inspector — AI website audit with a clear action plan",
     template: "%s · Page Inspector",
   },
   description,
@@ -24,12 +24,12 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Page Inspector",
-    title: "Page Inspector — AI website audit in under 60 seconds",
+    title: "Page Inspector — AI website audit with a clear action plan",
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Page Inspector — AI website audit in under 60 seconds",
+    title: "Page Inspector — AI website audit with a clear action plan",
     description,
   },
 };

@@ -71,6 +71,14 @@ const CATEGORIES: { key: string; label: string; blurb: string }[] = [
 
 const OPTION_LABELS = ["Quick fix", "Structural fix", "Long-term"];
 
+// The model often prefixes options with its own label ("Quick fix: ..."); we show our own
+export function stripOptionLabel(text: string) {
+  return text.replace(
+    /^\s*(option\s+[a-c]|quick(\s+tactical)?\s+fix|structural\s+fix|(longer[- ]term|long[- ]term)(\s+strategic)?(\s+improvement)?)\s*(\([^)]*\))?\s*[:—–-]\s*/i,
+    ""
+  );
+}
+
 const PRIORITY: Record<string, { fg: string; bg: string; label: string }> = {
   high: { fg: C.red, bg: C.redSoft, label: "High" },
   medium: { fg: C.amber, bg: C.amberSoft, label: "Medium" },
@@ -412,7 +420,7 @@ function CategoryPage({
                   {OPTION_LABELS[i] || `Option ${String.fromCharCode(65 + i)}`}
                 </Text>
               </View>
-              <Text style={{ ...s.body, flex: 1 }}>{rec}</Text>
+              <Text style={{ ...s.body, flex: 1 }}>{stripOptionLabel(rec)}</Text>
             </View>
           ))}
         </View>
@@ -436,7 +444,7 @@ function ActionPlanPage({ audit }: { audit: AuditRecord }) {
 
   const quickWins = CATEGORIES.map((c) => {
     const rec = (r[c.key] as CategoryReport | undefined)?.recommendations?.[0];
-    return rec ? { area: c.label, text: rec } : null;
+    return rec ? { area: c.label, text: stripOptionLabel(rec) } : null;
   }).filter(Boolean) as { area: string; text: string }[];
 
   return (

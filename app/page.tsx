@@ -24,7 +24,7 @@ const categories = [
 
 const steps = [
   { no: "1", title: "Paste your URL", desc: "Drop in your homepage — no account, no install, no tracking script to add." },
-  { no: "2", title: "AI inspects your site", desc: "We crawl your pages and run them through all six checks, the same way a human auditor would — just in under a minute." },
+  { no: "2", title: "AI inspects your site", desc: "We crawl your pages and run them through all six checks, the same way a human auditor would — in about two minutes." },
   { no: "3", title: "Get your action plan", desc: "A free preview shows the headline issues. Unlock the full PDF report with prioritized fixes for €8." },
 ];
 
@@ -39,7 +39,7 @@ const testimonials = [
 
 const faqs = [
   { q: "Do I need to create an account?", a: "No. Paste your URL and get a free preview instantly — no signup, no email required." },
-  { q: "How long does an audit take?", a: "Under 60 seconds for most sites. Larger, image-heavy pages may take a little longer." },
+  { q: "How long does an audit take?", a: "About two minutes for most sites. We read several of your pages, so larger sites can take a little longer." },
   { q: "What do I get with the full report?", a: "A detailed email report plus a downloadable PDF: scores for all six areas, every issue we found, three ways to fix each one, industry benchmarks and a prioritized action plan." },
   { q: "Can I re-run the audit after fixing issues?", a: "Yes — re-run anytime to see your updated score and confirm the fixes worked." },
 ];
@@ -139,7 +139,7 @@ export default function Home() {
       setLoadingStepIndex((prev) =>
         prev < loadingSteps.length - 1 ? prev + 1 : prev
       );
-    }, 2800);
+    }, 22000);
 
     return () => clearInterval(interval);
   }, [isLoading]);
@@ -369,7 +369,7 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="text-[18px] font-bold tracking-[-0.01em]">Inspecting your website</p>
-                  <p className="mt-0.5 text-[14px] text-[#6D6E6F]">This usually takes 20–40 seconds</p>
+                  <p className="mt-0.5 text-[14px] text-[#6D6E6F]">This usually takes about two minutes — keep this tab open</p>
                 </div>
               </div>
 
@@ -470,7 +470,7 @@ export default function Home() {
       {/* STRIP */}
       <div className="border-y border-[#EDEAE9] bg-[#F9F8F8]">
         <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-4 px-5 py-6 text-[14.5px] font-medium sm:grid-cols-3 sm:px-8">
-          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#F06A6A]" />Results in under 60 seconds</span>
+          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#F06A6A]" />Results in about two minutes</span>
           <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#796EFF]" />Checked against real audit criteria</span>
           <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#3E8F6C]" />One report, six essential areas</span>
         </div>
@@ -666,7 +666,7 @@ export default function Home() {
           <h2 className="relative mx-auto max-w-[680px] text-[32px] font-bold leading-[1.1] tracking-[-0.03em] sm:text-[48px]">
             See what your website could be doing better.
           </h2>
-          <p className="relative mt-4 text-[17px] text-[#6D6E6F]">Free preview in under a minute. Full report for €8.</p>
+          <p className="relative mt-4 text-[17px] text-[#6D6E6F]">Free preview in about two minutes. Full report for €8.</p>
           <button type="button" onClick={scrollToAudit} className={`${btnPrimary} relative mt-8 h-[52px] px-8 text-[16px]`}>
             Inspect your website
           </button>
