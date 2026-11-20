@@ -2,35 +2,34 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1e1f21;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-display {
-  font-family: var(--font-fredoka), ui-rounded, sans-serif;
+/* Legacy helpers used by secondary pages — now share the main typeface */
+.font-display,
+.font-mono-utility {
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
 }
 
 .font-mono-utility {
-  font-family: var(--font-jbmono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 .browser-body-bg {
@@ -38,8 +37,8 @@ body {
     180deg,
     #fff,
     #fff 46px,
-    #f3f0fa 46px,
-    #f3f0fa 47px
+    #f1efee 46px,
+    #f1efee 47px
   );
 }
 
@@ -71,13 +70,6 @@ body {
   animation: pinIn 0.5s ease forwards;
 }
 
-@keyframes pulseCta {
-  0%, 100% { box-shadow: 3px 3px 0 #18151A; }
-  50% { box-shadow: 6px 6px 0 #18151A; }
-}
-.animate-cta-pulse {
-  animation: pulseCta 2.2s ease-in-out infinite;
-}
 
 @keyframes pulseSlow {
   0%, 100% { opacity: 1; }
@@ -105,4 +97,23 @@ body {
 }
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal,
+  .animate-pin-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+  }
+  .animate-scan,
+  .animate-bob,
+  .animate-marquee,
+  .animate-pulse-slow {
+    animation: none;
+  }
 }

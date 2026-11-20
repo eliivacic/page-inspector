@@ -1,33 +1,18 @@
 import type { Metadata } from "next";
-import { Poppins, Fredoka, JetBrains_Mono } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 
-const poppins = Poppins({
-  subsets: ["latin"],
+const figtree = Figtree({
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-// Display font for headings — playful, rounded, gives the "fun but modern" feel
-const fredoka = Fredoka({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-fredoka",
-  display: "swap",
-});
-
-// Mono font for URLs, scores, badges — reinforces the "inspection/data" feel
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-jbmono",
+  variable: "--font-figtree",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "PageInspector",
+  title: "Page Inspector — AI website audits",
   description:
-    "AI-powered website audits with clear, practical recommendations.",
+    "Find what's holding your website back. AI-powered audits across SEO, UX, performance, accessibility, copywriting and conversion, with a prioritized action plan.",
 };
 
 export default function RootLayout({
@@ -37,11 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${poppins.className} ${fredoka.variable} ${jetbrainsMono.variable}`}
-      >
-        {children}
-      </body>
+      <body className={figtree.variable}>{children}</body>
     </html>
   );
 }
