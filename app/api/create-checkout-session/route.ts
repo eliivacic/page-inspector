@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
           price_data: {
             currency: "eur",
             product_data: {
-              name: "PageInspector Full Report",
+              name: "Page Inspector — Full website audit report",
+              description: `Full audit for ${url.replace(/^https?:\/\//, "").replace(/\/$/, "")}: 6 areas, step-by-step fixes, action plan and PDF. 14-day money-back guarantee.`,
             },
             unit_amount: 800,
           },

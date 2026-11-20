@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
+import StructuredData from "./structured-data";
 
 const figtree = Figtree({
   subsets: ["latin", "latin-ext"],
@@ -10,12 +11,12 @@ const figtree = Figtree({
 });
 
 const description =
-  "Find what's holding your website back. AI-powered audits across SEO, UX, performance, accessibility, copywriting and conversion, with a prioritized action plan.";
+  "Free website audit in about two minutes: see what's hurting your SEO, usability, speed, accessibility and conversions — then get a prioritized plan to fix it.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.page-inspector.com"),
   title: {
-    default: "Page Inspector — AI website audit with a clear action plan",
+    default: "Free Website Audit — SEO, UX & Conversion Check | Page Inspector",
     template: "%s · Page Inspector",
   },
   description,
@@ -24,12 +25,12 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Page Inspector",
-    title: "Page Inspector — AI website audit with a clear action plan",
+    title: "Free Website Audit — SEO, UX & Conversion Check | Page Inspector",
     description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Page Inspector — AI website audit with a clear action plan",
+    title: "Free Website Audit — SEO, UX & Conversion Check | Page Inspector",
     description,
   },
 };
@@ -41,7 +42,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={figtree.variable}>{children}</body>
+      <body className={figtree.variable}>
+        <StructuredData />
+        {children}
+      </body>
     </html>
   );
 }

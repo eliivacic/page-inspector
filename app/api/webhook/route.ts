@@ -355,7 +355,7 @@ ${
         <div style="border-top:1.5px solid ${BORDER};padding-top:20px;">
           <p style="margin:0;font-size:13px;color:${SOFT};">
             Thanks for using Page Inspector. Questions about this report?
-            Reply to this email and we'll take a look.
+            Just reply to this email. Not useful? Reply within 14 days and we&rsquo;ll refund you in full.
           </p>
         </div>
       </td>
@@ -363,7 +363,7 @@ ${
   </table>
 
   <p style="text-align:center;font-size:12px;color:${SOFT};margin:20px 0 0 0;">
-    © 2026 Page Inspector
+    © 2026 Page Inspector · VELORIA d.o.o., Ljubljana
   </p>
 </div>`;
 }
@@ -481,9 +481,10 @@ export async function POST(req: NextRequest) {
     }
 
     const { error: emailError } = await resend.emails.send({
-      from: "PageInspector <reports@page-inspector.com>",
+      from: "Page Inspector <reports@page-inspector.com>",
       to: email,
-      subject: "Your PageInspector Website Audit Report",
+      replyTo: "support@page-inspector.com",
+      subject: `Your website audit report for ${String(audit.website).replace(/^https?:\/\//, "").replace(/\/$/, "")}`,
       html: buildReportEmailHtml(audit, Boolean(attachments)),
       attachments,
     });
@@ -498,7 +499,7 @@ export async function POST(req: NextRequest) {
     if (ownerEmail) {
       try {
         await resend.emails.send({
-          from: "PageInspector <reports@page-inspector.com>",
+          from: "Page Inspector <reports@page-inspector.com>",
           to: ownerEmail,
           subject: `💰 New sale: ${audit.website}`,
           html: buildOwnerNotificationHtml({

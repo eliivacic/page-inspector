@@ -24,37 +24,27 @@ export default function TermsPage() {
 
       <section className="mx-auto max-w-[760px] px-6 py-20 sm:px-8">
         <h1 className="font-display text-[32px] font-semibold sm:text-[42px]">Terms of Use</h1>
-        <p className="mt-3 text-[14px] text-[#6D6E6F]">Last updated: July 2026</p>
+        <p className="mt-3 text-[14px] text-[#6D6E6F]">Last updated: November 2026</p>
 
         <div className="mt-10 flex flex-col gap-8 text-[15px] leading-[1.7] text-[#1E1F21]">
           <div>
             <h2 className="font-display mb-2 text-[20px] font-semibold">What Page Inspector does</h2>
             <p>
-              Page Inspector analyzes publicly available content on a website you submit
-              and generates an AI-produced audit report covering SEO, user experience,
-              performance, accessibility, copywriting and conversion. The free preview
-              gives a summary; the paid full report (8 EUR, one-time) is delivered by email
-              as a PDF after payment.
+              Page Inspector is operated by VELORIA d.o.o., Rakuševa ulica 8, 1000 Ljubljana, Slovenia (registration no. 7357974000, tax no. 89482786). It analyzes the publicly available content of a website you submit and produces an audit report covering SEO, user experience, performance, accessibility, copywriting and conversion. The free preview shows a summary; the full report (8 EUR, one-time payment) is delivered by email and as a PDF after payment.
             </p>
           </div>
 
           <div>
             <h2 className="font-display mb-2 text-[20px] font-semibold">Nature of the report</h2>
             <p>
-              Reports are generated automatically using AI and are intended as general
-              guidance, not professional consulting, legal, or technical certification.
-              Findings are based on publicly accessible content at the time of the scan
-              and may not capture every issue or reflect changes made after the audit.
+              Reports are generated automatically by software, including AI language models, based on the publicly accessible content of your pages at the time of the scan. They are intended as practical guidance, not professional consulting, legal advice or technical certification, and may not capture every issue or reflect changes made after the audit.
             </p>
           </div>
 
           <div>
             <h2 className="font-display mb-2 text-[20px] font-semibold">Payments and refunds</h2>
             <p>
-              Payments are processed securely via Stripe. Because the report is generated
-              and delivered digitally and immediately upon payment, purchases are generally
-              final. If you believe you did not receive your report, contact us and we
-              will investigate and make it right.
+              Payments are processed securely by Stripe; we never see or store your card details. The report is delivered digitally right after payment. If the full report isn&apos;t useful to you, email us at support@page-inspector.com within 14 days of purchase and we will refund the full amount. If your report doesn&apos;t arrive, contact us and we will resend it or refund you.
             </p>
           </div>
 

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Page Inspector — find what's holding your website back";
+export const alt = "Page Inspector — find out what's costing your website customers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -28,10 +28,10 @@ export default function Image() {
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.05, letterSpacing: -2, maxWidth: 900 }}>
-            Find what&rsquo;s holding your website back.
+            Find out what&rsquo;s costing your website customers.
           </div>
           <div style={{ fontSize: 32, color: "#6D6E6F", marginTop: 24 }}>
-            AI website audit · free preview · full PDF report for €8
+            Free website audit · full PDF report for €8
           </div>
         </div>
       </div>

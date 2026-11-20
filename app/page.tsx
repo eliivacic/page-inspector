@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { faqs } from "@/lib/content";
 
 type AuditResult = {
   success: boolean;
@@ -24,32 +25,29 @@ const categories = [
 
 const steps = [
   { no: "1", title: "Paste your URL", desc: "Drop in your homepage — no account, no install, no tracking script to add." },
-  { no: "2", title: "AI inspects your site", desc: "We crawl your pages and run them through all six checks, the same way a human auditor would — in about two minutes." },
-  { no: "3", title: "Get your action plan", desc: "A free preview shows the headline issues. Unlock the full PDF report with prioritized fixes for €8." },
+  { no: "2", title: "We inspect your pages", desc: "We follow your sitemap, read up to six of your key pages and check them against six areas — in about two minutes." },
+  { no: "3", title: "Fix what matters first", desc: "See your score and top findings for free. Unlock the full report with step-by-step fixes and a prioritized action plan for €8." },
 ];
 
-const testimonials = [
-  { quote: "Found a slow-loading hero image we'd never have caught ourselves. Fixed it in a day.", tag: "E-commerce" },
-  { quote: "The report read like something we'd have paid a consultant $500 for. Genuinely useful, not generic advice.", tag: "SaaS" },
-  { quote: "Caught 3 pages with duplicate title tags we didn't know existed. Small fix, real SEO impact.", tag: "Agency" },
-  { quote: "Clear priorities instead of a wall of jargon. We knew exactly what to fix first.", tag: "Startup" },
-  { quote: "Ran it before and after a redesign — the score jump was a nice sanity check.", tag: "Freelancer" },
-  { quote: "Accessibility issues we'd genuinely missed for months. Worth the €8 alone.", tag: "Nonprofit" },
+const problems = [
+  { title: "Visitors leave before they understand you", desc: "A vague headline or a buried call to action can quietly cost you most of the people who land on your site." },
+  { title: "Google can't tell what your pages are about", desc: "Duplicate titles, missing descriptions and weak structure keep you off the first page — even when your offer is good." },
+  { title: "Small technical issues add up", desc: "Slow images, missing alt text and low-contrast buttons each seem minor. Together, they push people away." },
 ];
 
-const faqs = [
-  { q: "Do I need to create an account?", a: "No. Paste your URL and get a free preview instantly — no signup, no email required." },
-  { q: "How long does an audit take?", a: "About two minutes for most sites. We read several of your pages, so larger sites can take a little longer." },
-  { q: "What do I get with the full report?", a: "A detailed email report plus a downloadable PDF: scores for all six areas, every issue we found, three ways to fix each one, industry benchmarks and a prioritized action plan." },
-  { q: "Can I re-run the audit after fixing issues?", a: "Yes — re-run anytime to see your updated score and confirm the fixes worked." },
+const standards = [
+  { title: "Your real content, not a template", desc: "Every finding points to something we actually found on your pages — a specific heading, page or count — so you know exactly what to change." },
+  { title: "Measured against recognized standards", desc: "We check against Google's search guidelines and Core Web Vitals thresholds, WCAG accessibility criteria and proven conversion practices." },
+  { title: "More than your homepage", desc: "We read your sitemap and review up to six of your most important pages, so site-wide patterns don't slip through." },
+  { title: "Nothing to install, nothing to share", desc: "We only read what is already public. No logins, no tracking code, no access to your site or analytics." },
 ];
 
 const loadingSteps = [
   "Connecting to your website...",
   "Reading your sitemap...",
-  "Analyzing pages in detail...",
-  "Running AI audit across 6 areas...",
-  "Almost done...",
+  "Reading your key pages...",
+  "Checking all six areas...",
+  "Writing up your findings...",
 ];
 
 const heroTasks = [
@@ -264,7 +262,7 @@ export default function Home() {
               Support
             </a>
             <button type="button" onClick={scrollToAudit} className={`${btnPrimary} h-10 px-5 text-[14.5px]`}>
-              Get started
+              Free audit
             </button>
           </div>
         </div>
@@ -278,15 +276,15 @@ export default function Home() {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#6D6E6F] shadow-[0_1px_3px_rgba(30,31,33,0.08)]">
                 <i className="block h-1.5 w-1.5 rounded-full bg-[#F06A6A]" />
-                AI-powered website audits
+                Website audit · SEO, UX, speed &amp; conversion
               </p>
 
               <h1 className="mt-6 text-[42px] font-bold leading-[1.04] tracking-[-0.035em] sm:text-[64px]">
-                Find what&rsquo;s holding your website back.
+                Find out what&rsquo;s costing your website customers.
               </h1>
 
               <p className="mt-6 max-w-[500px] text-[18px] leading-[1.6] text-[#6D6E6F]">
-                Get a clear audit of the biggest problems hurting your traffic, conversions and user experience — and a prioritized plan to fix them.
+                Paste your URL and see the problems holding your site back — in search, usability, speed and conversion. Free preview in about two minutes, with a clear plan for what to fix first.
               </p>
 
               <div className="mt-8 flex max-w-[540px] flex-col gap-2 rounded-[20px] bg-white p-2 shadow-[0_2px_4px_rgba(30,31,33,0.04),0_12px_32px_rgba(30,31,33,0.10)] ring-1 ring-[#EDEAE9] sm:flex-row sm:rounded-full">
@@ -306,16 +304,16 @@ export default function Home() {
                   disabled={isLoading}
                   className={`${btnPrimary} h-12 shrink-0 text-[15.5px]`}
                 >
-                  {isLoading ? "Inspecting..." : "Inspect website"}
+                  {isLoading ? "Inspecting..." : "Get my free audit"}
                 </button>
               </div>
 
               {error && <p className="mt-3 text-sm font-medium text-[#D63C4F]">{error}</p>}
 
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-[#6D6E6F]">
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>No signup required</span>
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Free preview</span>
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Full PDF report for €8</span>
+                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Free preview, no signup</span>
+                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Nothing to install</span>
+                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>14-day money-back guarantee</span>
               </div>
             </div>
 
@@ -440,7 +438,7 @@ export default function Home() {
               <div className="mt-8 rounded-2xl bg-[#FFF4F2] p-5 sm:p-6">
                 <p className="text-[18px] font-bold tracking-[-0.01em]">Unlock the full report</p>
                 <p className="mt-1.5 text-[15px] leading-[1.6] text-[#6D6E6F]">
-                  Every issue across all six areas, three ways to fix each one, industry benchmarks and a prioritized action plan — delivered to your inbox as an email and a PDF.
+                  All six areas, every finding, three ways to fix each problem, industry benchmarks and a prioritized action plan — sent to your inbox as an email and a PDF.
                 </p>
                 <div className="mt-5 flex flex-col gap-2.5 sm:flex-row">
                   <label htmlFor="checkout-email" className="sr-only">Email address</label>
@@ -458,9 +456,13 @@ export default function Home() {
                     disabled={isCheckingOut}
                     className={`${btnPrimary} h-12 text-[15px]`}
                   >
-                    {isCheckingOut ? "Redirecting..." : "Unlock full report · €8"}
+                    {isCheckingOut ? "Redirecting..." : "Get the full report · €8"}
                   </button>
                 </div>
+                <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#6D6E6F]">
+                  <span>🔒 Secure payment via Stripe</span>
+                  <span>↩ 14-day money-back guarantee</span>
+                </p>
               </div>
             </div>
           )}
@@ -470,18 +472,36 @@ export default function Home() {
       {/* STRIP */}
       <div className="border-y border-[#EDEAE9] bg-[#F9F8F8]">
         <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-4 px-5 py-6 text-[14.5px] font-medium sm:grid-cols-3 sm:px-8">
-          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#F06A6A]" />Results in about two minutes</span>
-          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#796EFF]" />Checked against real audit criteria</span>
-          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#3E8F6C]" />One report, six essential areas</span>
+          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#F06A6A]" />Free preview in about two minutes</span>
+          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#796EFF]" />Checked against Google and WCAG standards</span>
+          <span className="flex items-center gap-3"><i className="block h-2 w-2 rounded-full bg-[#3E8F6C]" />14-day money-back guarantee</span>
         </div>
       </div>
+
+      {/* PROBLEM */}
+      <section className="mx-auto max-w-[1200px] px-5 pt-24 sm:px-8 sm:pt-28">
+        <SectionIntro
+          eyebrow="Why it matters"
+          title="Most websites lose customers to problems nobody notices."
+          desc="You see your site every day, so the gaps become invisible. Your visitors notice them in seconds — and leave."
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {problems.map((p, i) => (
+            <article key={p.title} className="reveal rounded-[20px] p-7 ring-1 ring-[#EDEAE9]">
+              <span className="text-[13px] font-semibold text-[#F06A6A]">0{i + 1}</span>
+              <h3 className="mt-3 text-[20px] font-bold leading-[1.25] tracking-[-0.015em]">{p.title}</h3>
+              <p className="mt-2 text-[15px] leading-[1.6] text-[#6D6E6F]">{p.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* WHAT WE INSPECT */}
       <section id="inspect" className="mx-auto max-w-[1200px] scroll-mt-20 px-5 py-24 sm:px-8 sm:py-28">
         <SectionIntro
           eyebrow="What we inspect"
           title="One audit. Six essential areas."
-          desc="Every scan runs the same six checks a good consultant would — just faster, and without the invoice."
+          desc="The same six checks a good consultant would run — without the wait or the agency invoice."
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -498,7 +518,7 @@ export default function Home() {
       {/* HOW IT WORKS */}
       <section id="how" className="scroll-mt-20 bg-[#F9F8F8]">
         <div className="mx-auto max-w-[1200px] px-5 py-24 sm:px-8 sm:py-28">
-          <SectionIntro eyebrow="How it works" title="From URL to action plan in three steps" />
+          <SectionIntro eyebrow="How it works" title="From URL to action plan in three steps" desc="No calls, no onboarding, no access to your accounts." />
 
           <ol className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {steps.map((s) => (
@@ -572,22 +592,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="bg-[#F9F8F8] py-24">
-        <div className="mx-auto max-w-[1200px] px-5 sm:px-8">
-          <SectionIntro eyebrow="Early feedback" title="What early users are saying" />
-        </div>
-
-        <div className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#F9F8F8] to-transparent sm:w-32" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#F9F8F8] to-transparent sm:w-32" />
-
-          <div className="flex w-max animate-marquee gap-4 px-5">
-            {[...testimonials, ...testimonials].map((t, i) => (
-              <figure key={i} className="w-[290px] shrink-0 rounded-[20px] bg-white p-6 ring-1 ring-[#EDEAE9] sm:w-[340px]">
-                <blockquote className="text-[15.5px] leading-[1.6]">&ldquo;{t.quote}&rdquo;</blockquote>
-                <figcaption className="mt-5 text-[13px] font-semibold text-[#6D6E6F]">Early user · {t.tag}</figcaption>
-              </figure>
+      {/* WHY TRUST IT */}
+      <section className="bg-[#F9F8F8]">
+        <div className="mx-auto max-w-[1200px] px-5 py-24 sm:px-8 sm:py-28">
+          <SectionIntro
+            eyebrow="Why you can rely on it"
+            title="Specific findings you can act on today."
+            desc="Generic checklists tell you to “improve your SEO”. Your report tells you which page, which heading and what to change."
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {standards.map((t) => (
+              <article key={t.title} className="reveal flex gap-4 rounded-[20px] bg-white p-7 ring-1 ring-[#EDEAE9]">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E3F3EB] text-[13px] text-[#3E8F6C]">✓</span>
+                <div>
+                  <h3 className="text-[18px] font-bold tracking-[-0.01em]">{t.title}</h3>
+                  <p className="mt-1.5 text-[15px] leading-[1.6] text-[#6D6E6F]">{t.desc}</p>
+                </div>
+              </article>
             ))}
           </div>
         </div>
@@ -595,7 +616,7 @@ export default function Home() {
 
       {/* PRICING */}
       <section id="pricing" className="mx-auto max-w-[1200px] scroll-mt-20 px-5 py-24 sm:px-8 sm:py-28">
-        <SectionIntro eyebrow="Pricing" title="Try it free. Pay only for the full picture." />
+        <SectionIntro eyebrow="Pricing" title="Try it free. Pay only for the full picture." desc="One-time payment. No subscription, no account, nothing to cancel." />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="reveal flex flex-col rounded-[24px] bg-white p-8 ring-1 ring-[#EDEAE9] sm:p-10">
@@ -603,11 +624,11 @@ export default function Home() {
             <p className="mt-3 text-[48px] font-bold tracking-[-0.03em]">€0</p>
             <ul className="my-7 flex flex-1 flex-col gap-3 text-[15.5px]">
               <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>Overall score for your site</li>
-              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>Top 3 findings, headline only</li>
-              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>No signup required</li>
+              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>Top finding for SEO, UX and performance</li>
+              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>No signup, no card</li>
             </ul>
             <button type="button" onClick={scrollToAudit} className={`${btnSecondary} h-12 text-[15.5px]`}>
-              Run free preview
+              Get my free audit
             </button>
           </div>
 
@@ -618,14 +639,30 @@ export default function Home() {
               €8 <span className="text-[16px] font-medium tracking-normal text-white/60">one-time</span>
             </p>
             <ul className="my-7 flex flex-1 flex-col gap-3 text-[15.5px] text-white/90">
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Every finding across all 6 areas</li>
+              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Scores and 24 specific findings across all 6 areas</li>
               <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Three ways to fix each problem</li>
               <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Prioritized action plan + industry benchmarks</li>
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Downloadable PDF report</li>
+              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>PDF to share with your team or developer</li>
             </ul>
             <button type="button" onClick={scrollToAudit} className={`${btnPrimary} h-12 text-[15.5px]`}>
-              Unlock full report
+              Start with the free audit
             </button>
+            <p className="mt-4 text-center text-[13px] text-white/60">🔒 Secure payment via Stripe · 14-day money-back guarantee</p>
+          </div>
+        </div>
+      </section>
+
+      {/* GUARANTEE */}
+      <section className="mx-auto max-w-[1200px] px-5 pb-24 sm:px-8">
+        <div className="reveal flex flex-col gap-5 rounded-[24px] bg-[#E3F3EB] p-8 sm:flex-row sm:items-center sm:p-10">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-[24px]" aria-hidden>↩</span>
+          <div>
+            <h2 className="text-[22px] font-bold tracking-[-0.02em]">Not useful? Get your money back.</h2>
+            <p className="mt-1.5 max-w-[720px] text-[15.5px] leading-[1.6] text-[#2E4A3D]">
+              If the full report doesn&rsquo;t help you improve your website, email{" "}
+              <a href="mailto:support@page-inspector.com" className="font-semibold underline underline-offset-2">support@page-inspector.com</a>{" "}
+              within 14 days and we&rsquo;ll refund the full €8. No forms, no questions.
+            </p>
           </div>
         </div>
       </section>
@@ -664,18 +701,18 @@ export default function Home() {
           <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#F06A6A]/15" />
           <div className="pointer-events-none absolute -bottom-12 -right-6 h-48 w-48 rounded-[40px] bg-[#796EFF]/12" />
           <h2 className="relative mx-auto max-w-[680px] text-[32px] font-bold leading-[1.1] tracking-[-0.03em] sm:text-[48px]">
-            See what your website could be doing better.
+            Your next customer is already on your site. Make sure they stay.
           </h2>
-          <p className="relative mt-4 text-[17px] text-[#6D6E6F]">Free preview in about two minutes. Full report for €8.</p>
+          <p className="relative mt-4 text-[17px] text-[#6D6E6F]">Free preview in about two minutes. Full report for €8, with a 14-day money-back guarantee.</p>
           <button type="button" onClick={scrollToAudit} className={`${btnPrimary} relative mt-8 h-[52px] px-8 text-[16px]`}>
-            Inspect your website
+            Get my free audit
           </button>
         </div>
       </section>
 
       {/* FOOTER */}
       <footer className="border-t border-[#EDEAE9]">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-5 py-10 text-[14px] text-[#6D6E6F] sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-5 pt-10 text-[14px] text-[#6D6E6F] sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <span className="flex items-center gap-2.5 font-semibold text-[#1E1F21]"><LogoMark /> Page Inspector <span className="font-normal text-[#6D6E6F]">© 2026</span></span>
           <div className="flex gap-6 font-medium">
             <a href="/privacy" className="transition-colors hover:text-[#1E1F21]">Privacy policy</a>
@@ -683,6 +720,9 @@ export default function Home() {
             <a href="mailto:support@page-inspector.com" className="transition-colors hover:text-[#1E1F21]">Support</a>
           </div>
         </div>
+        <p className="mx-auto max-w-[1200px] px-5 pb-10 pt-4 text-[12.5px] leading-[1.6] text-[#8A898B] sm:px-8">
+          Page Inspector is operated by VELORIA d.o.o., Rakuševa ulica 8, 1000 Ljubljana, Slovenia · Registration no. 7357974000 · Tax no. 89482786
+        </p>
       </footer>
     </main>
   );
