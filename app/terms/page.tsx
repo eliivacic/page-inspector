@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of use",
   description: "Terms for using Page Inspector website audits.",
+  robots: { index: false, follow: true },
   alternates: { canonical: "/terms" },
 };
 

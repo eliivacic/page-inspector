@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { faqs } from "@/lib/content";
+import StructuredData from "./structured-data";
 
 type AuditResult = {
   success: boolean;
@@ -243,6 +245,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-white text-[#1E1F21]">
+      <StructuredData />
       {/* NAV */}
       <nav className="sticky top-0 z-50 border-b border-[#EDEAE9] bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-5 py-3.5 sm:px-8">
@@ -311,9 +314,9 @@ export default function Home() {
               {error && <p className="mt-3 text-sm font-medium text-[#D63C4F]">{error}</p>}
 
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-[#6D6E6F]">
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Free preview, no signup</span>
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>Nothing to install</span>
-                <span className="flex items-center gap-2"><span className="text-[#3E8F6C]">✓</span>14-day money-back guarantee</span>
+                <span className="flex items-center gap-2"><span aria-hidden className="text-[#3E8F6C]">✓</span>Free preview, no signup</span>
+                <span className="flex items-center gap-2"><span aria-hidden className="text-[#3E8F6C]">✓</span>Nothing to install</span>
+                <span className="flex items-center gap-2"><span aria-hidden className="text-[#3E8F6C]">✓</span>14-day money-back guarantee</span>
               </div>
             </div>
 
@@ -460,8 +463,8 @@ export default function Home() {
                   </button>
                 </div>
                 <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#6D6E6F]">
-                  <span>🔒 Secure payment via Stripe</span>
-                  <span>↩ 14-day money-back guarantee</span>
+                  <span><span aria-hidden>🔒 </span>Secure payment via Stripe</span>
+                  <span><span aria-hidden>↩ </span>14-day money-back guarantee</span>
                 </p>
               </div>
             </div>
@@ -536,58 +539,51 @@ export default function Home() {
       <section id="report" className="mx-auto max-w-[1200px] scroll-mt-20 px-5 py-24 sm:px-8 sm:py-28">
         <SectionIntro
           eyebrow="Sample report"
-          title="What you actually get"
-          desc="A real breakdown with a plan you can work through — not a vague “improve your SEO” checklist."
+          title="We audited our own website. Here’s the unedited report."
+          desc="The same report you get for €8 — scores, specific findings, three ways to fix each problem and a prioritized action plan. Nothing tidied up."
         />
 
-        <div className="reveal grid grid-cols-1 gap-10 rounded-[28px] bg-[#FFF4F2] p-6 sm:p-10 lg:grid-cols-[280px_1fr]">
-          <div className="rounded-[20px] bg-white p-7 ring-1 ring-[#F3E3E0]">
-            <div className="relative mx-auto flex h-[150px] w-[150px] items-center justify-center">
-              <svg width="150" height="150" className="-rotate-90" aria-hidden>
-                <circle cx="75" cy="75" r="64" stroke="#F1EFEE" strokeWidth="13" fill="none" />
-                <circle cx="75" cy="75" r="64" stroke="#B7791F" strokeWidth="13" fill="none" strokeDasharray="402" strokeDashoffset="153" strokeLinecap="round" />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-[38px] font-bold leading-none tracking-[-0.03em]">62</span>
-                <span className="mt-1 text-[11.5px] text-[#6D6E6F]">out of 100</span>
-              </div>
-            </div>
-
-            <div className="mt-7 flex flex-col gap-3">
-              {[
-                { label: "UX", value: 70, color: "#B7791F" },
-                { label: "SEO", value: 55, color: "#B7791F" },
-                { label: "Performance", value: 41, color: "#D63C4F" },
-                { label: "Copy", value: 79, color: "#3E8F6C" },
-              ].map((m) => (
-                <div key={m.label} className="flex items-center gap-3 text-[13px] font-medium">
-                  <span className="w-[84px]">{m.label}</span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#F1EFEE]">
-                    <div className="h-full rounded-full" style={{ width: `${m.value}%`, background: m.color }} />
-                  </div>
-                  <span className="w-6 text-right font-semibold" style={{ color: m.color }}>{m.value}</span>
-                </div>
-              ))}
-            </div>
+        <div className="reveal grid grid-cols-1 items-center gap-10 rounded-[28px] bg-[#FFF4F2] p-6 sm:p-10 lg:grid-cols-[1.3fr_1fr]">
+          <div className="relative grid grid-cols-3 gap-3 sm:gap-4">
+            {[
+              { src: "/sample/cover.webp", alt: "Report cover with overall score and scores by area" },
+              { src: "/sample/area.webp", alt: "Report page with SEO findings and three ways to fix them" },
+              { src: "/sample/plan.webp", alt: "Action plan page with prioritized tasks" },
+            ].map((img, i) => (
+              <a
+                key={img.src}
+                href="/sample-report.pdf"
+                target="_blank"
+                rel="noopener"
+                className={`block overflow-hidden rounded-[10px] bg-white shadow-[0_2px_4px_rgba(30,31,33,0.06),0_16px_36px_rgba(30,31,33,0.14)] ring-1 ring-[#F3E3E0] transition-transform duration-200 hover:-translate-y-1 ${i === 1 ? "sm:-translate-y-4 sm:hover:-translate-y-5" : ""}`}
+              >
+                <Image src={img.src} alt={img.alt} width={910} height={1287} className="h-auto w-full" sizes="(min-width: 1024px) 220px, 30vw" />
+              </a>
+            ))}
           </div>
 
-          <div className="flex flex-col gap-3">
-            {[
-              { badge: "Critical", cls: "bg-[#FDE5E8] text-[#C23A4C]", title: "Largest Contentful Paint is 4.2s", desc: "Visitors on mobile wait nearly twice the recommended time before your homepage looks loaded. Compress your hero image and defer offscreen scripts." },
-              { badge: "Warning", cls: "bg-[#FDF1DC] text-[#9A6412]", title: "6 images missing alt text", desc: "These are invisible to screen readers and to Google Images. Add short, descriptive alt text to each." },
-              { badge: "Good", cls: "bg-[#E3F3EB] text-[#2E7556]", title: "Clear, action-driven CTA copy", desc: "“Inspect website” tells visitors exactly what happens next — keep this pattern across the site." },
-            ].map((f) => (
-              <div key={f.title} className="flex items-start gap-4 rounded-[18px] bg-white p-5 ring-1 ring-[#F3E3E0]">
-                <span className={`mt-0.5 w-[72px] shrink-0 rounded-full py-1 text-center text-[11.5px] font-semibold ${f.cls}`}>{f.badge}</span>
-                <div>
-                  <h4 className="text-[16px] font-semibold tracking-[-0.01em]">{f.title}</h4>
-                  <p className="mt-1 text-[14.5px] leading-[1.55] text-[#6D6E6F]">{f.desc}</p>
-                </div>
-              </div>
-            ))}
-            <p className="mt-2 flex items-center gap-2 px-1 text-[14px] text-[#6D6E6F]">
-              <span aria-hidden>📎</span> Every full report also comes as a polished PDF you can share with your team.
-            </p>
+          <div>
+            <ul className="flex flex-col gap-3 text-[15.5px]">
+              {[
+                "Overall score and a score for each of the six areas",
+                "24 findings tied to your actual pages and headings",
+                "Quick, structural and long-term fix for every problem",
+                "Industry benchmarks and a prioritized action plan",
+              ].map((item) => (
+                <li key={item} className="flex gap-3">
+                  <span aria-hidden className="text-[#3E8F6C]">✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
+              <a href="/sample-report.pdf" target="_blank" rel="noopener" className={`${btnSecondary} h-12 text-[15px]`}>
+                Download sample report (PDF)
+              </a>
+              <button type="button" onClick={scrollToAudit} className={`${btnPrimary} h-12 text-[15px]`}>
+                Get my free audit
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -603,7 +599,7 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {standards.map((t) => (
               <article key={t.title} className="reveal flex gap-4 rounded-[20px] bg-white p-7 ring-1 ring-[#EDEAE9]">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E3F3EB] text-[13px] text-[#3E8F6C]">✓</span>
+                <span aria-hidden className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#E3F3EB] text-[13px] text-[#3E8F6C]">✓</span>
                 <div>
                   <h3 className="text-[18px] font-bold tracking-[-0.01em]">{t.title}</h3>
                   <p className="mt-1.5 text-[15px] leading-[1.6] text-[#6D6E6F]">{t.desc}</p>
@@ -623,9 +619,9 @@ export default function Home() {
             <h3 className="text-[20px] font-bold">Free preview</h3>
             <p className="mt-3 text-[48px] font-bold tracking-[-0.03em]">€0</p>
             <ul className="my-7 flex flex-1 flex-col gap-3 text-[15.5px]">
-              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>Overall score for your site</li>
-              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>Top finding for SEO, UX and performance</li>
-              <li className="flex gap-3"><span className="text-[#3E8F6C]">✓</span>No signup, no card</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#3E8F6C]">✓</span>Overall score for your site</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#3E8F6C]">✓</span>Top finding for SEO, UX and performance</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#3E8F6C]">✓</span>No signup, no card</li>
             </ul>
             <button type="button" onClick={scrollToAudit} className={`${btnSecondary} h-12 text-[15.5px]`}>
               Get my free audit
@@ -639,15 +635,15 @@ export default function Home() {
               €8 <span className="text-[16px] font-medium tracking-normal text-white/60">one-time</span>
             </p>
             <ul className="my-7 flex flex-1 flex-col gap-3 text-[15.5px] text-white/90">
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Scores and 24 specific findings across all 6 areas</li>
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Three ways to fix each problem</li>
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>Prioritized action plan + industry benchmarks</li>
-              <li className="flex gap-3"><span className="text-[#F06A6A]">✓</span>PDF to share with your team or developer</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#F06A6A]">✓</span>Scores and 24 specific findings across all 6 areas</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#F06A6A]">✓</span>Three ways to fix each problem</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#F06A6A]">✓</span>Prioritized action plan + industry benchmarks</li>
+              <li className="flex gap-3"><span aria-hidden className="text-[#F06A6A]">✓</span>PDF to share with your team or developer</li>
             </ul>
             <button type="button" onClick={scrollToAudit} className={`${btnPrimary} h-12 text-[15.5px]`}>
               Start with the free audit
             </button>
-            <p className="mt-4 text-center text-[13px] text-white/60">🔒 Secure payment via Stripe · 14-day money-back guarantee</p>
+            <p className="mt-4 text-center text-[13px] text-white/60"><span aria-hidden>🔒 </span>Secure payment via Stripe · 14-day money-back guarantee</p>
           </div>
         </div>
       </section>

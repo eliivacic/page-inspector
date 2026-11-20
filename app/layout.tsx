@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
-import StructuredData from "./structured-data";
 
 const figtree = Figtree({
   subsets: ["latin", "latin-ext"],
@@ -42,10 +41,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={figtree.variable}>
-        <StructuredData />
-        {children}
-      </body>
+      <body className={figtree.variable}>{children}</body>
     </html>
   );
 }

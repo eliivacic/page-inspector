@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy policy",
   description: "How Page Inspector handles your data.",
+  robots: { index: false, follow: true },
   alternates: { canonical: "/privacy" },
 };
 
