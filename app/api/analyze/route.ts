@@ -2,7 +2,8 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-export const maxDuration = 60;
+// Long-form reports regularly take over a minute to generate
+export const maxDuration = 300;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -192,6 +193,7 @@ export async function POST(request: Request) {
 
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
+      text: { format: { type: "json_object" } },
 
       input: `
 You are a senior website conversion rate optimization consultant with 15+ years of experience auditing websites for funded startups and established e-commerce brands. You charge $500/hour for audits like this one. Clients pay you specifically because your findings are precise, evidence-based, and immediately actionable — never generic advice that could apply to any website.

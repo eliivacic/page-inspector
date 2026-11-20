@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy policy",
+  description: "How Page Inspector handles your data.",
+  alternates: { canonical: "/privacy" },
+};
+
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[#FFFFFF] text-[#1E1F21]">

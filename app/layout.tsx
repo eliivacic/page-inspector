@@ -9,10 +9,29 @@ const figtree = Figtree({
   display: "swap",
 });
 
+const description =
+  "Find what's holding your website back. AI-powered audits across SEO, UX, performance, accessibility, copywriting and conversion, with a prioritized action plan.";
+
 export const metadata: Metadata = {
-  title: "Page Inspector — AI website audits",
-  description:
-    "Find what's holding your website back. AI-powered audits across SEO, UX, performance, accessibility, copywriting and conversion, with a prioritized action plan.",
+  metadataBase: new URL("https://www.page-inspector.com"),
+  title: {
+    default: "Page Inspector — AI website audit in under 60 seconds",
+    template: "%s · Page Inspector",
+  },
+  description,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Page Inspector",
+    title: "Page Inspector — AI website audit in under 60 seconds",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Page Inspector — AI website audit in under 60 seconds",
+    description,
+  },
 };
 
 export default function RootLayout({

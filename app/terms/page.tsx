@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of use",
+  description: "Terms for using Page Inspector website audits.",
+  alternates: { canonical: "/terms" },
+};
+
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-[#FFFFFF] text-[#1E1F21]">
